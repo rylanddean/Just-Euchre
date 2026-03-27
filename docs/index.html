@@ -8,6 +8,7 @@
   <meta property="og:title" content="Just Euchre" />
   <meta property="og:description" content="One game a day. No frills. Just the best card game ever made." />
   <meta name="theme-color" content="#080B12" />
+  <link rel="icon" type="image/png" href="icon/icon.png" />
 
   <style>
     /* ── Reset & Base ─────────────────────────────────────────── */
@@ -66,6 +67,21 @@
       height: 56px;
     }
 
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: block;
+      flex-shrink: 0;
+    }
+
     .wordmark {
       font-size: 17px;
       font-weight: 600;
@@ -75,6 +91,14 @@
 
     .wordmark span {
       color: var(--mint);
+    }
+
+    .cta-app-icon {
+      width: 88px;
+      height: 88px;
+      border-radius: 20px;
+      display: block;
+      margin-bottom: 4px;
     }
 
     .btn-pill {
@@ -221,49 +245,14 @@
       overflow: hidden;
     }
 
-    .phone-mockup::before {
-      content: '';
+    .phone-img {
       position: absolute;
-      top: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 72px;
-      height: 10px;
-      background: var(--pill);
-      border-radius: 100px;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }
-
-    .phone-screenshot-placeholder {
-      width: 82%;
-      aspect-ratio: 1;
-      background: var(--pill);
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .placeholder-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--subtle);
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-
-    /* Suit decoration on phone */
-    .phone-suits {
-      display: flex;
-      gap: 10px;
-    }
-
-    .phone-suit {
-      font-size: 18px;
-      opacity: 0.3;
-    }
-
-    .phone-suit.red { color: var(--red); opacity: 0.45; }
 
     /* ── Section shared ───────────────────────────────────────── */
     section { padding: 80px 0; }
@@ -415,46 +404,15 @@
       position: relative;
     }
 
-    .screenshot-frame::before {
-      content: '';
-      position: absolute;
-      top: 13px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 60px;
-      height: 8px;
-      background: var(--pill);
-      border-radius: 100px;
-    }
-
     .screenshot-frame:hover {
       border-color: var(--mint);
     }
 
-    .screenshot-inner {
-      width: 78%;
-      aspect-ratio: 9 / 16;
-      background: var(--pill);
-      border-radius: 8px;
-      border: 1px dashed var(--border);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .screenshot-icon {
-      font-size: 24px;
-      opacity: 0.25;
-    }
-
-    .screenshot-cap {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      color: var(--subtle);
+    .screenshot-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }
 
     /* ── App Store CTA ────────────────────────────────────────── */
@@ -582,13 +540,11 @@
   <nav>
     <div class="container">
       <div class="nav-inner">
-        <span class="wordmark">Just <span>Euchre</span></span>
-        <a href="#" class="btn-pill">
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6.5 0C5.37 0 4.45 0.86 4.45 1.92C3.28 1.92 2.17 2.54 1.59 3.55C1.0 4.56 1.07 5.8 1.75 6.75C1.07 7.7 1.0 8.94 1.59 9.95C2.17 10.96 3.28 11.58 4.45 11.58V13H8.55V11.58C9.72 11.58 10.83 10.96 11.41 9.95C12.0 8.94 11.93 7.7 11.25 6.75C11.93 5.8 12.0 4.56 11.41 3.55C10.83 2.54 9.72 1.92 8.55 1.92C8.55 0.86 7.63 0 6.5 0Z" fill="white"/>
-          </svg>
-          App Store
+        <a href="index.html" class="nav-brand">
+          <img src="icon/icon.png" class="nav-icon" alt="Just Euchre icon" />
+          <span class="wordmark">Just <span>Euchre</span></span>
         </a>
+        <a href="#" class="btn-pill">App Store</a>
       </div>
     </div>
   </nav>
@@ -607,12 +563,7 @@
             One game a day. No frills. Just the best card game ever made.
           </p>
           <div class="hero-actions">
-            <a href="#" class="btn-primary">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 0C6.9 0 6 0.86 6 1.92C4.83 1.92 3.72 2.54 3.14 3.55C2.55 4.56 2.62 5.8 3.3 6.75C2.62 7.7 2.55 8.94 3.14 9.95C3.72 10.96 4.83 11.58 6 11.58V16H10V11.58C11.17 11.58 12.28 10.96 12.86 9.95C13.45 8.94 13.38 7.7 12.7 6.75C13.38 5.8 13.45 4.56 12.86 3.55C12.28 2.54 11.17 1.92 10 1.92C10 0.86 9.1 0 8 0Z" fill="#080B12"/>
-              </svg>
-              Download on App Store
-            </a>
+            <a href="#" class="btn-primary">Download on App Store</a>
             <a href="#how-to-play" class="btn-secondary">
               How to Play
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -624,15 +575,7 @@
 
         <div class="phone-wrap">
           <div class="phone-mockup">
-            <div class="phone-screenshot-placeholder">
-              <span class="placeholder-label">Screenshot</span>
-            </div>
-            <div class="phone-suits">
-              <span class="phone-suit">♠</span>
-              <span class="phone-suit red">♥</span>
-              <span class="phone-suit red">♦</span>
-              <span class="phone-suit">♣</span>
-            </div>
+            <img src="screenshots/IMG_0467.PNG" alt="Just Euchre home screen" class="phone-img" />
           </div>
         </div>
       </div>
@@ -722,24 +665,19 @@
       <div class="screenshots-row">
 
         <div class="screenshot-frame">
-          <div class="screenshot-inner">
-            <div class="screenshot-icon">🏠</div>
-            <div class="screenshot-cap">Home</div>
-          </div>
+          <img src="screenshots/IMG_0467.PNG" alt="Just Euchre screenshot" />
         </div>
 
         <div class="screenshot-frame">
-          <div class="screenshot-inner">
-            <div class="screenshot-icon">🃏</div>
-            <div class="screenshot-cap">Game</div>
-          </div>
+          <img src="screenshots/IMG_0469.PNG" alt="Just Euchre screenshot" />
         </div>
 
         <div class="screenshot-frame">
-          <div class="screenshot-inner">
-            <div class="screenshot-icon">📊</div>
-            <div class="screenshot-cap">Results</div>
-          </div>
+          <img src="screenshots/IMG_0470.PNG" alt="Just Euchre screenshot" />
+        </div>
+
+        <div class="screenshot-frame">
+          <img src="screenshots/IMG_0471.PNG" alt="Just Euchre screenshot" />
         </div>
 
       </div>
@@ -752,12 +690,7 @@
   <section class="cta-section">
     <div class="container">
       <div class="cta-box">
-        <div class="cta-suits">
-          <span>♠</span>
-          <span class="cta-suit-red">♥</span>
-          <span class="cta-suit-red">♦</span>
-          <span>♣</span>
-        </div>
+        <img src="icon/icon.png" alt="Just Euchre" class="cta-app-icon" />
         <h2 class="cta-title">Your daily game<br>is waiting.</h2>
         <p class="cta-sub">Free on the App Store. One game a day. No frills. Just the best card game ever made.</p>
         <a href="#" class="btn-primary" style="font-size: 16px; padding: 15px 32px;">
