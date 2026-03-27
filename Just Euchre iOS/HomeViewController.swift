@@ -179,7 +179,7 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
     }
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        54
+        68
     }
 }
 
@@ -261,14 +261,14 @@ private final class HomeCardView: UIControl {
 
 private final class HistoryCell: UITableViewCell {
     static let reuseIdentifier = "HistoryCell"
-    private let dateLabel = UILabel()
+    private let monthLabel = UILabel()
+    private let dayLabel = UILabel()
     private let resultLabel = UILabel()
     private let scoreLabel = UILabel()
-    private var dateWidth: NSLayoutConstraint?
+    private let resultStack = UIStackView()
+    private var dateColumnWidth: NSLayoutConstraint?
     private var resultLeadingToDate: NSLayoutConstraint?
     private var resultLeadingToEdge: NSLayoutConstraint?
-    private var resultTrailingToScore: NSLayoutConstraint?
-    private var resultTrailingToEdge: NSLayoutConstraint?
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -276,70 +276,79 @@ private final class HistoryCell: UITableViewCell {
         backgroundColor = .clear
         selectionStyle = .none
 
-        dateLabel.textColor = UIColor(white: 0.62, alpha: 1)
-        dateLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        dateLabel.textAlignment = .left
+        monthLabel.textColor = UIColor(white: 0.55, alpha: 1)
+        monthLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+        monthLabel.textAlignment = .center
+
+        dayLabel.textColor = UIColor(white: 0.85, alpha: 1)
+        dayLabel.font = UIFont.systemFont(ofSize: 28, weight: .semibold)
+        dayLabel.textAlignment = .center
 
         resultLabel.textColor = .white
-        resultLabel.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        resultLabel.font = UIFont.systemFont(ofSize: 22, weight: .bold)
         resultLabel.textAlignment = .left
-        resultLabel.numberOfLines = 2
-        resultLabel.lineBreakMode = .byWordWrapping
 
         scoreLabel.textColor = UIColor(white: 0.72, alpha: 1)
         scoreLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        scoreLabel.textAlignment = .right
+        scoreLabel.textAlignment = .left
 
-        [dateLabel, resultLabel, scoreLabel].forEach {
+        resultStack.axis = .vertical
+        resultStack.alignment = .leading
+        resultStack.spacing = 2
+        resultStack.addArrangedSubview(resultLabel)
+        resultStack.addArrangedSubview(scoreLabel)
+
+        [monthLabel, dayLabel, resultStack].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             contentView.addSubview($0)
         }
 
-        dateWidth = dateLabel.widthAnchor.constraint(equalToConstant: 72)
-        resultLeadingToDate = resultLabel.leadingAnchor.constraint(equalTo: dateLabel.trailingAnchor, constant: 14)
-        resultLeadingToEdge = resultLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor)
-        resultTrailingToScore = resultLabel.trailingAnchor.constraint(lessThanOrEqualTo: scoreLabel.leadingAnchor, constant: -12)
-        resultTrailingToEdge = resultLabel.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor)
+        dateColumnWidth = monthLabel.widthAnchor.constraint(equalToConstant: 52)
+        resultLeadingToDate = resultStack.leadingAnchor.constraint(equalTo: monthLabel.trailingAnchor, constant: 16)
+        resultLeadingToEdge = resultStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor)
 
         NSLayoutConstraint.activate([
-            dateLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            dateLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            dateWidth!,
+            // Month label — upper half of date column
+            monthLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            dateColumnWidth!,
+            monthLabel.bottomAnchor.constraint(equalTo: contentView.centerYAnchor, constant: -1),
 
+            // Day label — lower half of date column
+            dayLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            dayLabel.widthAnchor.constraint(equalTo: monthLabel.widthAnchor),
+            dayLabel.topAnchor.constraint(equalTo: contentView.centerYAnchor, constant: 1),
+
+            // Result+score stack — centered vertically in the cell
             resultLeadingToDate!,
-            resultLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            resultTrailingToScore!,
-
-            scoreLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            scoreLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            scoreLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 64),
+            resultStack.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor),
+            resultStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
         ])
 
         resultLeadingToEdge?.isActive = false
-        resultTrailingToEdge?.isActive = false
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     func configure(dateText: String?, resultText: String, scoreText: String) {
-        dateLabel.text = dateText ?? ""
-        dateLabel.isHidden = (dateText == nil)
+        let parts = dateText?.split(separator: " ", maxSplits: 1) ?? []
+        monthLabel.text = parts.count > 0 ? String(parts[0]).uppercased() : ""
+        dayLabel.text = parts.count > 1 ? String(parts[1]) : ""
+        let hasDate = dateText != nil
+        monthLabel.isHidden = !hasDate
+        dayLabel.isHidden = !hasDate
+
         resultLabel.text = resultText
         scoreLabel.text = scoreText
         scoreLabel.isHidden = scoreText.isEmpty
 
-        if dateLabel.isHidden {
-            dateWidth?.constant = 0
-            resultLeadingToDate?.isActive = false
-            resultLeadingToEdge?.isActive = true
-        } else {
-            dateWidth?.constant = 72
+        if hasDate {
+            dateColumnWidth?.constant = 52
             resultLeadingToEdge?.isActive = false
             resultLeadingToDate?.isActive = true
+        } else {
+            dateColumnWidth?.constant = 0
+            resultLeadingToDate?.isActive = false
+            resultLeadingToEdge?.isActive = true
         }
-
-        // When the score is hidden (empty state), let the message use the full row width.
-        resultTrailingToScore?.isActive = !scoreLabel.isHidden
-        resultTrailingToEdge?.isActive = scoreLabel.isHidden
     }
 }

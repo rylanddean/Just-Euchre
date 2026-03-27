@@ -1529,7 +1529,7 @@ private final class EuchreGame {
             let suits = Card.Suit.allCases.filter { $0 != banned }
             var buttons: [HumanButton] = [HumanButton(title: "Pass", kind: .pass)]
             for suit in suits {
-                buttons.append(HumanButton(title: "\(suit.symbol) \(suitName(suit))", kind: .callSuit(suit)))
+                buttons.append(HumanButton(title: suit.symbol, kind: .callSuit(suit)))
             }
             return buttons
         case .dealerDiscard:
