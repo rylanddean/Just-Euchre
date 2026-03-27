@@ -71,15 +71,13 @@ final class SettingsViewController: UIViewController {
     private func buildSections() {
         contentStack.arrangedSubviews.forEach { contentStack.removeArrangedSubview($0); $0.removeFromSuperview() }
 
-        contentStack.addArrangedSubview(sectionTitle("Player"))
-        let playerRow = SettingsRowView(surface: surface, border: border)
-        playerRow.configure(title: "Profile", subtitle: "\(ProfileStore.emoji) \(ProfileStore.name)", icon: "person.circle", showsChevron: true)
-        playerRow.onTap = { [weak self] in
-            let vc = ProfileViewController()
-            vc.modalPresentationStyle = .pageSheet
-            self?.present(vc, animated: true)
-        }
-        contentStack.addArrangedSubview(playerRow)
+        contentStack.addArrangedSubview(sectionTitle("Stats"))
+        let streakRow = SettingsRowView(surface: surface, border: border)
+        let longestStreak = DailyGameStore.longestStreak
+        let streakSubtitle = longestStreak > 0 ? "\(longestStreak) day\(longestStreak == 1 ? "" : "s")" : "No streak yet"
+        streakRow.configure(title: "Longest streak", subtitle: streakSubtitle, icon: "flame.fill", showsChevron: false)
+        streakRow.isUserInteractionEnabled = false
+        contentStack.addArrangedSubview(streakRow)
 
         contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("Notifications"))
@@ -335,7 +333,6 @@ final class SettingsViewController: UIViewController {
             GameStateStore.clear()
             GameHistoryStore.clear()
             DailyGameStore.debugResetAll()
-            ProfileStore.clear()
             self?.showToast("Local data reset.")
         })
 
@@ -480,6 +477,7 @@ private final class SettingsRowView: UIControl {
 
         [iconView, textStack, chevron].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
+            $0.isUserInteractionEnabled = false
             addSubview($0)
         }
 

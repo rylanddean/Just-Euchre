@@ -13,7 +13,7 @@ import UIKit
 final class GameViewController: UIViewController {
 
     private let theme = Theme()
-    private var seatEmojis = [ProfileStore.emoji, "🦊", "🦉", "🤖"] // You, W, N, E
+    private var seatEmojis = ["🙂", "🦊", "🦉", "🤖"] // You, W, N, E
 
     private let titleLabel = UILabel()
     private let headerRow = UIStackView()
@@ -51,13 +51,12 @@ final class GameViewController: UIViewController {
         view.backgroundColor = theme.background
         buildUI()
 
-        game.humanName = ProfileStore.name
+        game.humanName = "You"
         game.setBotNames(BotNameGenerator.nextBotNames(count: 3))
         game.onUpdate = { [weak self] in
             self?.render()
         }
 
-        NotificationCenter.default.addObserver(self, selector: #selector(profileDidChange), name: ProfileStore.didChangeNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(appDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(appWillResignActive), name: UIApplication.willResignActiveNotification, object: nil)
 
@@ -75,10 +74,9 @@ final class GameViewController: UIViewController {
         didRecordOutcome = false
         gameOverNudge = nil
         hasInitializedGame = true
-        seatEmojis[0] = ProfileStore.emoji
 
         game = EuchreGame()
-        game.humanName = ProfileStore.name
+        game.humanName = "You"
         game.setBotNames(BotNameGenerator.nextBotNames(count: 3))
         game.onUpdate = { [weak self] in
             self?.render()
@@ -180,7 +178,6 @@ final class GameViewController: UIViewController {
         headerRow.arrangedSubviews.forEach { headerRow.removeArrangedSubview($0); $0.removeFromSuperview() }
 
         // Seat order (clockwise): 0 = You (South), 1 = West, 2 = North, 3 = East
-        seatEmojis[0] = ProfileStore.emoji
         for index in 0..<4 {
             let badge = PlayerBadgeView(theme: theme)
             badge.setName(game.playerNames[index])
@@ -188,17 +185,6 @@ final class GameViewController: UIViewController {
             playerBadges.append(badge)
             headerRow.addArrangedSubview(badge)
         }
-    }
-
-    @objc private func profileDidChange() {
-        seatEmojis[0] = ProfileStore.emoji
-        game.humanName = ProfileStore.name
-
-        if !playerBadges.isEmpty {
-            playerBadges[0].setName(game.playerNames[0])
-            playerBadges[0].setEmoji(ProfileStore.emoji)
-        }
-        render()
     }
 
     private func recordOutcomeIfNeeded() {
@@ -244,8 +230,7 @@ final class GameViewController: UIViewController {
         guard let data = GameStateStore.loadIfToday(today: today) else { return }
         guard let state = try? JSONDecoder().decode(EuchreGamePersistedState.self, from: data) else { return }
         game.applyPersistedState(state)
-        game.humanName = ProfileStore.name
-        seatEmojis[0] = ProfileStore.emoji
+        game.humanName = "You"
         hasInitializedGame = true
     }
 

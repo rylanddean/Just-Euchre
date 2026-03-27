@@ -1,11 +1,11 @@
 //
-//  HowToPlayViewController.swift
+//  OnboardingViewController.swift
 //  Just Euchre iOS
 //
 
 import UIKit
 
-final class HowToPlayViewController: UIViewController {
+final class OnboardingViewController: UIViewController {
 
     private let background = UIColor(red: 8/255, green: 11/255, blue: 18/255, alpha: 1)
 
@@ -26,7 +26,7 @@ final class HowToPlayViewController: UIViewController {
 
     private let pageControl: UIPageControl = {
         let pc = UIPageControl()
-        pc.numberOfPages = sections.count
+        pc.numberOfPages = onboardingSections.count
         pc.currentPage = 0
         pc.currentPageIndicatorTintColor = .white
         pc.pageIndicatorTintColor = UIColor(white: 1, alpha: 0.25)
@@ -45,15 +45,6 @@ final class HowToPlayViewController: UIViewController {
         return btn
     }()
 
-    private lazy var closeButton: UIButton = {
-        let btn = UIButton(type: .system)
-        btn.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
-        btn.tintColor = UIColor(white: 0.45, alpha: 1)
-        btn.translatesAutoresizingMaskIntoConstraints = false
-        btn.addTarget(self, action: #selector(didTapClose), for: .touchUpInside)
-        return btn
-    }()
-
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = background
@@ -65,15 +56,9 @@ final class HowToPlayViewController: UIViewController {
         view.addSubview(scrollView)
         view.addSubview(pageControl)
         view.addSubview(actionButton)
-        view.addSubview(closeButton)
 
         let safe = view.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
-            closeButton.topAnchor.constraint(equalTo: safe.topAnchor, constant: 16),
-            closeButton.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -18),
-            closeButton.widthAnchor.constraint(equalToConstant: 28),
-            closeButton.heightAnchor.constraint(equalToConstant: 28),
-
             actionButton.bottomAnchor.constraint(equalTo: safe.bottomAnchor, constant: -32),
             actionButton.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: 24),
             actionButton.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -24),
@@ -98,7 +83,7 @@ final class HowToPlayViewController: UIViewController {
         pagesStack.distribution = .fillEqually
         pagesStack.translatesAutoresizingMaskIntoConstraints = false
 
-        for section in sections {
+        for section in onboardingSections {
             pagesStack.addArrangedSubview(makePage(section))
         }
 
@@ -110,11 +95,11 @@ final class HowToPlayViewController: UIViewController {
             pagesStack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
             pagesStack.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor),
             pagesStack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor,
-                                              multiplier: CGFloat(sections.count)),
+                                              multiplier: CGFloat(onboardingSections.count)),
         ])
     }
 
-    private func makePage(_ section: Section) -> UIView {
+    private func makePage(_ section: OnboardingSection) -> UIView {
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
 
@@ -155,29 +140,43 @@ final class HowToPlayViewController: UIViewController {
     }
 
     private func updatePage(animated: Bool) {
-        let isLast = currentPage == sections.count - 1
-        actionButton.setTitle(isLast ? "Done" : "Next", for: .normal)
+        let isLast = currentPage == onboardingSections.count - 1
+        let title = isLast ? "Let's Play" : "Next"
+        actionButton.setTitle(title, for: .normal)
         pageControl.currentPage = currentPage
     }
 
     @objc private func didTapAction() {
-        if currentPage < sections.count - 1 {
+        if currentPage < onboardingSections.count - 1 {
             currentPage += 1
             let offset = CGPoint(x: scrollView.bounds.width * CGFloat(currentPage), y: 0)
             scrollView.setContentOffset(offset, animated: true)
         } else {
-            dismiss(animated: true)
-        }
-    }
+            UserDefaults.standard.set(true, forKey: "hasSeenOnboarding")
+            guard let window = view.window else { return }
 
-    @objc private func didTapClose() {
-        dismiss(animated: true)
+            let blackout = UIView(frame: window.bounds)
+            blackout.backgroundColor = .black
+            blackout.alpha = 0
+            window.addSubview(blackout)
+
+            UIView.animate(withDuration: 0.4, animations: {
+                blackout.alpha = 1
+            }, completion: { _ in
+                window.rootViewController = RootTabBarController()
+                UIView.animate(withDuration: 0.4) {
+                    blackout.alpha = 0
+                } completion: { _ in
+                    blackout.removeFromSuperview()
+                }
+            })
+        }
     }
 }
 
 // MARK: - UIScrollViewDelegate
 
-extension HowToPlayViewController: UIScrollViewDelegate {
+extension OnboardingViewController: UIScrollViewDelegate {
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
         currentPage = Int(round(scrollView.contentOffset.x / scrollView.bounds.width))
     }
@@ -185,61 +184,46 @@ extension HowToPlayViewController: UIScrollViewDelegate {
 
 // MARK: - Content
 
-private struct Section {
+private struct OnboardingSection {
     let emoji: String
     let heading: String
     let body: String
 }
 
-private let sections: [Section] = [
-    Section(
+private let onboardingSections: [OnboardingSection] = [
+    OnboardingSection(
+        emoji: "🃏",
+        heading: "Just Euchre",
+        body: "One game a day. No frills.\nJust the best card game ever made."
+    ),
+    OnboardingSection(
+        emoji: "📅",
+        heading: "One Game a Day",
+        body: "You get one game every day. Come back tomorrow for a fresh deal. Build your streak — and your reputation."
+    ),
+    OnboardingSection(
         emoji: "🎯",
         heading: "The Goal",
-        body: "Win at least 3 out of 5 tricks per round. Do that and your team scores. Fall short and you've been \"euchred\" — which sounds made up, but the shame is very real."
+        body: "Win at least 3 out of 5 tricks per round. You and your partner play against two bots. First team to 10 points wins."
     ),
-    Section(
-        emoji: "👥",
-        heading: "The Crew",
-        body: "4 players, 2 teams. You and your partner sit across the table from each other, silently judging your opponents' every choice."
-    ),
-    Section(
-        emoji: "🃏",
-        heading: "The Deck",
-        body: "Only 24 cards are in play — 9s through Aces. That's it. We threw out the riff-raff. This isn't your grandma's 52-card game... well, actually it might be exactly that."
-    ),
-    Section(
+    OnboardingSection(
         emoji: "👑",
-        heading: "Card Ranks",
-        body: "Trump suit reigns supreme. The Jack of trump — called the Right Bower — is the highest card in the game. The Jack of the same color suit (Left Bower) is its loyal sidekick. After that it's A, K, Q, J, 10, 9 for all other suits."
+        heading: "Trump Rules Everything",
+        body: "Each round, one suit is trump. The Jack of that suit — the Right Bower — is the most powerful card in the game."
     ),
-    Section(
-        emoji: "🤝",
-        heading: "Dealing",
-        body: "Deal 5 cards to each player, in batches of 2 and 3 (order doesn't matter, dealer's call). Flip the top card of the remaining pile — that's your proposed trump suit."
-    ),
-    Section(
+    OnboardingSection(
         emoji: "🙋",
-        heading: "Calling Trump",
-        body: "Starting left of the dealer, each player can \"order it up\" to accept that card's suit as trump — or pass. If ordered up, the dealer pockets it and discards a card.\n\nIf everyone passes, go around again. Now anyone can name any other suit as trump."
+        heading: "You Call the Shots",
+        body: "After the deal, you can name the trump suit or pass. Name it, and you're on the hook to win at least 3 tricks."
     ),
-    Section(
+    OnboardingSection(
         emoji: "🦅",
-        heading: "Going Alone",
-        body: "Feeling brave? You can ditch your partner and go solo. Win all 5 tricks by yourself and you score 4 points. It's a big swing, but it's a big flex."
+        heading: "Go Alone",
+        body: "Feeling bold? Drop your partner and go solo. Win all 5 tricks alone and score 4 points. Big risk, big flex."
     ),
-    Section(
-        emoji: "🔄",
-        heading: "Playing Tricks",
-        body: "The player to the left of the dealer leads the first trick. You must follow suit if you can. If you can't, play anything — trump or otherwise.\n\nHighest card of the led suit wins, unless someone played trump. Highest trump wins over everything."
-    ),
-    Section(
-        emoji: "📊",
-        heading: "Scoring",
-        body: "Make your bid (3–4 tricks): 1 point\nWin all 5 tricks: 2 points\nGo alone and win 3–4: 1 point\nGo alone and sweep all 5: 4 points\nGet euchred: opponents get 2 points. Rough."
-    ),
-    Section(
-        emoji: "🏆",
-        heading: "Winning",
-        body: "First team to 10 points wins. Some folks play to 5 or 7 if they're in a hurry, or to 15 if they have absolutely nowhere to be."
+    OnboardingSection(
+        emoji: "💡",
+        heading: "Need a Refresher?",
+        body: "Tap Settings anytime for the full rules. You can also set your name and emoji avatar from there."
     ),
 ]
