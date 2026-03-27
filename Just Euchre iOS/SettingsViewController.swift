@@ -102,12 +102,22 @@ final class SettingsViewController: UIViewController {
 
         contentStack.addArrangedSubview(sectionTitle("About"))
 
+        let howToPlayRow = SettingsRowView(surface: surface, border: border)
+        howToPlayRow.configure(title: "How to play", subtitle: "Rules & scoring", icon: "book.fill", showsChevron: true)
+        howToPlayRow.onTap = { [weak self] in
+            let vc = HowToPlayViewController()
+            vc.modalPresentationStyle = .pageSheet
+            self?.present(vc, animated: true)
+        }
+        contentStack.addArrangedSubview(howToPlayRow)
+
+
         let versionRow = SettingsRowView(surface: surface, border: border)
         versionRow.configure(title: "App version", subtitle: appVersionText(), icon: "app", showsChevron: false)
         versionRow.alpha = 0.95
-        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(didLongPressVersionRow(_:)))
-        longPress.minimumPressDuration = 0.9
-        versionRow.addGestureRecognizer(longPress)
+        versionRow.onTap = { [weak self] in
+            self?.didTapVersionRow()
+        }
         contentStack.addArrangedSubview(versionRow)
 
         let devRow = SettingsRowView(surface: surface, border: border)
@@ -214,9 +224,17 @@ final class SettingsViewController: UIViewController {
         }
     }
 
-    @objc private func didLongPressVersionRow(_ recognizer: UILongPressGestureRecognizer) {
-        guard recognizer.state == .began else { return }
+    private var versionTapCount = 0
 
+    private func didTapVersionRow() {
+        versionTapCount += 1
+        if versionTapCount >= 20 {
+            versionTapCount = 0
+            showDeveloperTools()
+        }
+    }
+
+    private func showDeveloperTools() {
         let sheet = UIAlertController(
             title: "Developer Tools",
             message: "Reset local state for testing.",
