@@ -80,6 +80,22 @@ final class SettingsViewController: UIViewController {
         contentStack.addArrangedSubview(streakRow)
 
         contentStack.addArrangedSubview(sectionSpacer())
+        contentStack.addArrangedSubview(sectionTitle("Gameplay"))
+
+        let suggestRow = SettingsToggleRowView(surface: surface, border: border)
+        suggestRow.configure(title: "Friendly suggestions", icon: "lightbulb.fill", isOn: UserDefaults.standard.bool(forKey: "friendlySuggestions"))
+        suggestRow.onToggle = { isOn in
+            UserDefaults.standard.set(isOn, forKey: "friendlySuggestions")
+        }
+        contentStack.addArrangedSubview(suggestRow)
+
+        let suggestSubtitleRow = SettingsRowView(surface: surface, border: border)
+        suggestSubtitleRow.configure(title: "How it works", subtitle: "Wiggles a card after 15s of thinking", icon: "info.circle", showsChevron: false)
+        suggestSubtitleRow.isUserInteractionEnabled = false
+        suggestSubtitleRow.alpha = 0.7
+        contentStack.addArrangedSubview(suggestSubtitleRow)
+
+        contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("Notifications"))
 
         let toggleRow = SettingsToggleRowView(surface: surface, border: border)
