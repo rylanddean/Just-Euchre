@@ -46,6 +46,11 @@ final class GameViewController: UIViewController {
     private var gameOverNudge: String?
     private var hasInitializedGame = false
 
+    private var suggestionTimer: Timer?
+    private weak var hintedCardView: CardView?
+    private let hintPillView = UIView()
+    private let hintLabel = UILabel()
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = theme.background
@@ -116,11 +121,31 @@ final class GameViewController: UIViewController {
         ledBadge.isHidden = true
         indicatorRow.isHidden = true
 
+        hintPillView.backgroundColor = UIColor(red: 26/255, green: 33/255, blue: 44/255, alpha: 1)
+        hintPillView.layer.cornerRadius = 12
+        hintPillView.layer.borderWidth = 1
+        hintPillView.layer.borderColor = UIColor(red: 82/255, green: 246/255, blue: 170/255, alpha: 0.5).cgColor
+        hintPillView.alpha = 0
+        hintPillView.translatesAutoresizingMaskIntoConstraints = false
+
+        hintLabel.textColor = UIColor(red: 82/255, green: 246/255, blue: 170/255, alpha: 1)
+        hintLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+        hintLabel.textAlignment = .center
+        hintLabel.translatesAutoresizingMaskIntoConstraints = false
+        hintPillView.addSubview(hintLabel)
+        NSLayoutConstraint.activate([
+            hintLabel.leadingAnchor.constraint(equalTo: hintPillView.leadingAnchor, constant: 12),
+            hintLabel.trailingAnchor.constraint(equalTo: hintPillView.trailingAnchor, constant: -12),
+            hintLabel.topAnchor.constraint(equalTo: hintPillView.topAnchor, constant: 6),
+            hintLabel.bottomAnchor.constraint(equalTo: hintPillView.bottomAnchor, constant: -6),
+        ])
+
         view.addSubview(titleLabel)
         view.addSubview(headerRow)
         view.addSubview(statusContainer)
         view.addSubview(tableContainer)
         view.addSubview(actionRow)
+        view.addSubview(hintPillView)
         view.addSubview(handRow)
 
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -167,6 +192,11 @@ final class GameViewController: UIViewController {
             handRow.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -18),
             handRow.bottomAnchor.constraint(equalTo: safe.bottomAnchor, constant: -18),
             handRow.heightAnchor.constraint(equalToConstant: 116),
+
+            hintPillView.centerXAnchor.constraint(equalTo: safe.centerXAnchor),
+            hintPillView.bottomAnchor.constraint(equalTo: handRow.topAnchor, constant: -6),
+            hintPillView.leadingAnchor.constraint(greaterThanOrEqualTo: safe.leadingAnchor, constant: 18),
+            hintPillView.trailingAnchor.constraint(lessThanOrEqualTo: safe.trailingAnchor, constant: -18),
         ])
 
         buildHeader()
@@ -410,6 +440,7 @@ final class GameViewController: UIViewController {
         rebuildHand()
         rebuildActions()
 
+        manageSuggestionTimer()
         game.kickAIIfNeeded()
         persistIfNeeded()
     }
@@ -427,6 +458,7 @@ final class GameViewController: UIViewController {
     private func rebuildHand() {
         handRow.arrangedSubviews.forEach { handRow.removeArrangedSubview($0); $0.removeFromSuperview() }
         handCardViews = []
+        hintedCardView = nil
 
         let hand = game.players[0].hand.sorted(by: { game.sortKey(for: $0) < game.sortKey(for: $1) })
         let selectable = Set(game.selectableCardsForHuman())
@@ -529,6 +561,7 @@ final class GameViewController: UIViewController {
             showIllegalPlayFeedback()
             return
         }
+        cancelSuggestion()
         game.humanPlayCard(card)
     }
 
@@ -591,6 +624,75 @@ final class GameViewController: UIViewController {
                 }
             })
         }
+    }
+
+    // MARK: - Friendly Suggestions
+
+    private var isFriendlySuggestionsEnabled: Bool {
+        UserDefaults.standard.bool(forKey: "friendlySuggestions")
+    }
+
+    private func manageSuggestionTimer() {
+        let isHumanPlayTurn: Bool
+        if case .playing(let turn, _) = game.phase, turn == 0 {
+            isHumanPlayTurn = true
+        } else {
+            isHumanPlayTurn = false
+        }
+
+        guard isFriendlySuggestionsEnabled && isHumanPlayTurn else {
+            cancelSuggestion()
+            return
+        }
+
+        // Only start if no timer is already running.
+        guard suggestionTimer == nil else { return }
+        suggestionTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in
+            self?.showSuggestion()
+        }
+    }
+
+    private func cancelSuggestion() {
+        suggestionTimer?.invalidate()
+        suggestionTimer = nil
+        if let cv = hintedCardView {
+            UIView.animate(withDuration: 0.2) { cv.isHinted = false }
+            hintedCardView = nil
+        }
+        guard hintPillView.alpha > 0 else { return }
+        UIView.animate(withDuration: 0.2) { self.hintPillView.alpha = 0 }
+    }
+
+    private func showSuggestion() {
+        suggestionTimer = nil
+        guard let suggestion = game.suggestedPlayForHuman() else { return }
+
+        // Find the CardView matching the suggested card.
+        let hand = game.players[0].hand.sorted(by: { game.sortKey(for: $0) < game.sortKey(for: $1) })
+        guard let idx = hand.firstIndex(of: suggestion.card), idx < handCardViews.count else { return }
+        let cardView = handCardViews[idx]
+
+        // Haptic feedback.
+        let haptic = UIImpactFeedbackGenerator(style: .medium)
+        haptic.impactOccurred()
+
+        // Wiggle the card, then lift it to mark it as the suggestion.
+        let wiggle = CAKeyframeAnimation(keyPath: "transform.rotation.z")
+        wiggle.values = [0, -0.14, 0.14, -0.10, 0.10, -0.06, 0.06, 0]
+        wiggle.keyTimes = [0, 0.1, 0.3, 0.5, 0.65, 0.78, 0.9, 1.0]
+        wiggle.duration = 0.65
+        wiggle.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        cardView.layer.add(wiggle, forKey: "suggestion_wiggle")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) { [weak self, weak cardView] in
+            guard let self, let cardView else { return }
+            UIView.animate(withDuration: 0.25) { cardView.isHinted = true }
+            self.hintedCardView = cardView
+        }
+
+        // Show hint label.
+        hintLabel.text = "💡 \(suggestion.reason)"
+        UIView.animate(withDuration: 0.25) { self.hintPillView.alpha = 1 }
     }
 }
 
@@ -873,6 +975,7 @@ private final class CardView: UIControl {
     var isChosen: Bool = false { didSet { updateSelectable() } }
     var isWinnerHighlighted: Bool = false { didSet { updateSelectable() } }
     var isLeadHighlighted: Bool = false { didSet { updateSelectable() } }
+    var isHinted: Bool = false { didSet { updateSelectable() } }
 
     override var isHighlighted: Bool {
         didSet {
@@ -979,6 +1082,7 @@ private final class CardView: UIControl {
             layer.borderWidth = 4
             layer.borderColor = theme.accent.withAlphaComponent(0.90).cgColor
             alpha = 1.0
+            transform = .identity
             return
         }
 
@@ -986,6 +1090,7 @@ private final class CardView: UIControl {
             layer.borderWidth = 3
             layer.borderColor = theme.pillBorder.withAlphaComponent(0.90).cgColor
             alpha = 1.0
+            transform = .identity
             return
         }
 
@@ -993,6 +1098,15 @@ private final class CardView: UIControl {
             layer.borderWidth = 3
             layer.borderColor = theme.accentRed.withAlphaComponent(0.95).cgColor
             alpha = 1.0
+            transform = .identity
+            return
+        }
+
+        if isHinted {
+            layer.borderWidth = 3
+            layer.borderColor = UIColor(red: 0.98, green: 0.84, blue: 0.35, alpha: 0.95).cgColor
+            alpha = 1.0
+            transform = CGAffineTransform(translationX: 0, y: -10)
             return
         }
 
@@ -1000,6 +1114,7 @@ private final class CardView: UIControl {
         layer.borderWidth = isSelectable ? 2 : 0
         layer.borderColor = border.cgColor
         alpha = isSelectable ? 1.0 : 0.55
+        transform = .identity
     }
 }
 
@@ -1323,7 +1438,7 @@ private final class EuchreGame {
         phase == .dealerDiscard && dealer == 0
     }
 
-    private var phase: Phase = .makingTrumpRound1(turn: 1)
+    private(set) var phase: Phase = .makingTrumpRound1(turn: 1)
     private var bannedSuit: Card.Suit? { upcard?.suit }
 
     func startNewHand() {
@@ -1820,6 +1935,39 @@ private final class EuchreGame {
         }
         // Otherwise lose cheaply.
         return sortedLegal.first!
+    }
+
+    // MARK: - Friendly Suggestion
+
+    func suggestedPlayForHuman() -> (card: Card, reason: String)? {
+        guard case .playing(let turn, _) = phase, turn == 0 else { return nil }
+        guard let trump else { return nil }
+        let card = choosePlay(for: 0)
+        let reason = suggestionReason(for: card, trump: trump)
+        return (card, reason)
+    }
+
+    private func suggestionReason(for card: Card, trump: Card.Suit) -> String {
+        let isLeading = trickPlays.isEmpty
+        let cardSuit = effectiveSuit(for: card, trump: trump)
+        let isTrump = cardSuit == trump
+
+        if isLeading {
+            if isRightBower(card, trump: trump) { return "Lead the right bower — strongest card" }
+            if isLeftBower(card, trump: trump)  { return "Lead the left bower — second best" }
+            if isTrump                          { return "Lead trump to pull out their trumps" }
+            if card.rank == .ace                { return "Lead your ace — hard to beat off-suit" }
+            return "Nothing great — lead your lowest card"
+        }
+
+        let led = ledSuit ?? trump
+        let myTeam = team(of: 0)
+        if let winner = currentWinningPlayer, team(of: winner) == myTeam {
+            return "Partner's winning — play your lowest"
+        }
+        if isTrump { return "Trump in to steal the trick" }
+        if card.rank == .ace { return "Best shot — play your ace" }
+        return "Can't win this one — dump your lowest"
     }
 
     // MARK: - Rules
