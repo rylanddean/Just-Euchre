@@ -36,7 +36,7 @@ final class SettingsViewController: UIViewController {
         contentStack.axis = .vertical
         contentStack.alignment = .fill
         contentStack.distribution = .fill
-        contentStack.spacing = 14
+        contentStack.spacing = 8
         contentStack.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(titleLabel)
@@ -77,6 +77,7 @@ final class SettingsViewController: UIViewController {
         }
         contentStack.addArrangedSubview(playerRow)
 
+        contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("Card Packs"))
         let packsRow = SettingsRowView(surface: surface, border: border)
         packsRow.configure(title: "Card packs", subtitle: "Coming soon", icon: "rectangle.stack.fill", showsChevron: false)
@@ -84,6 +85,7 @@ final class SettingsViewController: UIViewController {
         packsRow.alpha = 0.85
         contentStack.addArrangedSubview(packsRow)
 
+        contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("Support"))
 
         let coffeeRow = SettingsRowView(surface: surface, border: border)
@@ -100,6 +102,7 @@ final class SettingsViewController: UIViewController {
         }
         contentStack.addArrangedSubview(feedbackRow)
 
+        contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("About"))
 
         let howToPlayRow = SettingsRowView(surface: surface, border: border)
@@ -135,11 +138,18 @@ final class SettingsViewController: UIViewController {
         contentStack.addArrangedSubview(socialsRow)
     }
 
+    private func sectionSpacer() -> UIView {
+        let spacer = UIView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        spacer.heightAnchor.constraint(equalToConstant: 10).isActive = true
+        return spacer
+    }
+
     private func sectionTitle(_ title: String) -> UILabel {
         let label = UILabel()
         label.text = title.uppercased()
-        label.textColor = UIColor(white: 0.72, alpha: 1)
-        label.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        label.textColor = UIColor(white: 0.55, alpha: 1)
+        label.font = UIFont.systemFont(ofSize: 11, weight: .medium)
         return label
     }
 
@@ -305,18 +315,16 @@ private final class SettingsRowView: UIControl {
         super.init(frame: .zero)
 
         backgroundColor = surface
-        layer.cornerRadius = 22
-        layer.borderWidth = 1
-        layer.borderColor = border.cgColor
+        layer.cornerRadius = 12
 
-        iconView.tintColor = .white
+        iconView.tintColor = UIColor(white: 1, alpha: 0.65)
         iconView.contentMode = .scaleAspectFit
 
         titleLabel.textColor = .white
         titleLabel.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
 
         subtitleLabel.textColor = UIColor(white: 0.72, alpha: 1)
-        subtitleLabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        subtitleLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
 
         chevron.tintColor = UIColor(white: 0.45, alpha: 1)
         chevron.contentMode = .scaleAspectFit
@@ -332,7 +340,7 @@ private final class SettingsRowView: UIControl {
         }
 
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: 72),
+            heightAnchor.constraint(equalToConstant: 60),
 
             iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18),
             iconView.centerYAnchor.constraint(equalTo: centerYAnchor),

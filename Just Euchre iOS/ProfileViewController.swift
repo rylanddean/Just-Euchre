@@ -58,9 +58,7 @@ final class ProfileViewController: UIViewController, UITextFieldDelegate {
         nameField.autocorrectionType = .no
         nameField.delegate = self
         nameField.backgroundColor = surface
-        nameField.layer.cornerRadius = 18
-        nameField.layer.borderWidth = 1
-        nameField.layer.borderColor = border.cgColor
+        nameField.layer.cornerRadius = 14
         nameField.translatesAutoresizingMaskIntoConstraints = false
 
         emojiGrid.axis = .vertical
@@ -139,9 +137,7 @@ final class ProfileViewController: UIViewController, UITextFieldDelegate {
             button.setTitle(emoji, for: .normal)
             button.titleLabel?.font = UIFont.systemFont(ofSize: 28, weight: .regular)
             button.backgroundColor = surface
-            button.layer.cornerRadius = 18
-            button.layer.borderWidth = 1
-            button.layer.borderColor = border.cgColor
+            button.layer.cornerRadius = 14
             button.setTitleColor(.white, for: .normal)
             button.addTarget(self, action: #selector(didTapEmoji(_:)), for: .touchUpInside)
             button.heightAnchor.constraint(equalToConstant: 52).isActive = true
@@ -184,8 +180,7 @@ final class ProfileViewController: UIViewController, UITextFieldDelegate {
     private func updateEmojiSelectionUI() {
         emojiButtons.forEach { button in
             let isSelected = (button.title(for: .normal) == selectedEmoji)
-            button.layer.borderColor = isSelected ? UIColor(red: 95/255, green: 232/255, blue: 158/255, alpha: 1).cgColor : border.cgColor
-            button.layer.borderWidth = isSelected ? 2 : 1
+            button.backgroundColor = isSelected ? UIColor(white: 0.38, alpha: 1) : surface
         }
     }
 
@@ -233,9 +228,7 @@ private final class ComingSoonRow: UIView {
         super.init(frame: .zero)
 
         backgroundColor = surface
-        layer.cornerRadius = 18
-        layer.borderWidth = 1
-        layer.borderColor = border.cgColor
+        layer.cornerRadius = 12
 
         let titleLabel = UILabel()
         titleLabel.text = title
@@ -245,7 +238,7 @@ private final class ComingSoonRow: UIView {
         let subtitleLabel = UILabel()
         subtitleLabel.text = subtitle
         subtitleLabel.textColor = UIColor(white: 0.72, alpha: 1)
-        subtitleLabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        subtitleLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
 
         let chevron = UIImageView(image: UIImage(systemName: "chevron.right"))
         chevron.tintColor = UIColor(white: 0.45, alpha: 1)

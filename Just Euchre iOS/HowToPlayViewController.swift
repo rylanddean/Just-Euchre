@@ -9,7 +9,6 @@ final class HowToPlayViewController: UIViewController {
 
     private let background = UIColor(red: 8/255, green: 11/255, blue: 18/255, alpha: 1)
     private let surface = UIColor(red: 26/255, green: 33/255, blue: 44/255, alpha: 1)
-    private let border = UIColor(white: 0.28, alpha: 1)
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -76,9 +75,7 @@ final class HowToPlayViewController: UIViewController {
     private func makeCard(_ section: Section) -> UIView {
         let card = UIView()
         card.backgroundColor = surface
-        card.layer.cornerRadius = 18
-        card.layer.borderWidth = 1
-        card.layer.borderColor = border.cgColor
+        card.layer.cornerRadius = 14
         card.translatesAutoresizingMaskIntoConstraints = false
 
         let emojiLabel = UILabel()
