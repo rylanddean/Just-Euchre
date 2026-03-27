@@ -8,6 +8,7 @@
   <meta property="og:title" content="Just Euchre" />
   <meta property="og:description" content="One game a day. No frills. Just the best card game ever made." />
   <meta name="theme-color" content="#080B12" />
+  <link rel="icon" type="image/png" href="icon/icon.png" />
 
   <style>
     /* ── Reset & Base ─────────────────────────────────────────── */
@@ -66,6 +67,21 @@
       height: 56px;
     }
 
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: block;
+      flex-shrink: 0;
+    }
+
     .wordmark {
       font-size: 17px;
       font-weight: 600;
@@ -75,6 +91,14 @@
 
     .wordmark span {
       color: var(--mint);
+    }
+
+    .cta-app-icon {
+      width: 88px;
+      height: 88px;
+      border-radius: 20px;
+      display: block;
+      margin-bottom: 4px;
     }
 
     .btn-pill {
@@ -516,7 +540,10 @@
   <nav>
     <div class="container">
       <div class="nav-inner">
-        <span class="wordmark">Just <span>Euchre</span></span>
+        <a href="index.html" class="nav-brand">
+          <img src="icon/icon.png" class="nav-icon" alt="Just Euchre icon" />
+          <span class="wordmark">Just <span>Euchre</span></span>
+        </a>
         <a href="#" class="btn-pill">App Store</a>
       </div>
     </div>
@@ -663,12 +690,7 @@
   <section class="cta-section">
     <div class="container">
       <div class="cta-box">
-        <div class="cta-suits">
-          <span>♠</span>
-          <span class="cta-suit-red">♥</span>
-          <span class="cta-suit-red">♦</span>
-          <span>♣</span>
-        </div>
+        <img src="icon/icon.png" alt="Just Euchre" class="cta-app-icon" />
         <h2 class="cta-title">Your daily game<br>is waiting.</h2>
         <p class="cta-sub">Free on the App Store. One game a day. No frills. Just the best card game ever made.</p>
         <a href="#" class="btn-primary" style="font-size: 16px; padding: 15px 32px;">
