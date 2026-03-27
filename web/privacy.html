@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — Just Euchre</title>
+  <meta name="description" content="Privacy Policy for Just Euchre." />
+  <meta name="theme-color" content="#080B12" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #080B12;
+      --surface: #1A212C;
+      --pill:    #161C26;
+      --mint:    #52F6AA;
+      --red:     #FB595E;
+      --white:   #FFFFFF;
+      --muted:   #B8B8B8;
+      --subtle:  #8C8C8C;
+      --border:  #474747;
+      --radius:  14px;
+      --font:    -apple-system, system-ui, "Helvetica Neue", sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--white);
+      font-family: var(--font);
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    a { color: var(--mint); text-decoration: none; }
+    a:hover { opacity: 0.75; }
+
+    .container {
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Nav */
+    nav {
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+    .wordmark {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      color: var(--white);
+      text-decoration: none;
+    }
+    .wordmark span { color: var(--mint); }
+    .nav-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .nav-back:hover { color: var(--white); opacity: 1; }
+
+    /* Page content */
+    .page-header {
+      padding: 56px 0 40px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 48px;
+    }
+    .page-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--mint);
+      margin-bottom: 12px;
+    }
+    .page-title {
+      font-size: clamp(28px, 5vw, 40px);
+      font-weight: 700;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+    .page-meta {
+      font-size: 14px;
+      color: var(--subtle);
+    }
+
+    /* Prose */
+    .prose { padding-bottom: 80px; }
+
+    .prose h2 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      margin: 40px 0 12px;
+      padding-top: 40px;
+      border-top: 1px solid var(--border);
+    }
+    .prose h2:first-child { margin-top: 0; border-top: none; padding-top: 0; }
+
+    .prose p {
+      font-size: 16px;
+      color: var(--muted);
+      line-height: 1.75;
+      margin-bottom: 16px;
+    }
+
+    .prose p strong {
+      color: var(--white);
+      font-weight: 600;
+    }
+
+    .prose ul {
+      margin: 8px 0 16px 0;
+      padding-left: 0;
+      list-style: none;
+    }
+    .prose ul li {
+      font-size: 16px;
+      color: var(--muted);
+      line-height: 1.75;
+      padding: 6px 0 6px 22px;
+      position: relative;
+    }
+    .prose ul li::before {
+      content: '—';
+      position: absolute;
+      left: 0;
+      color: var(--subtle);
+    }
+
+    .callout {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--mint);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      margin: 24px 0;
+    }
+    .callout p {
+      margin: 0;
+      color: var(--muted);
+    }
+    .callout p strong { color: var(--mint); }
+
+    /* Footer */
+    footer { border-top: 1px solid var(--border); padding: 32px 0; }
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .footer-brand { font-size: 15px; font-weight: 600; }
+    .footer-suits { font-size: 16px; color: var(--subtle); letter-spacing: 2px; }
+    .footer-suits .red { color: var(--red); opacity: 0.7; }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a { font-size: 13px; color: var(--subtle); transition: color 0.15s; }
+    .footer-links a:hover { color: var(--white); opacity: 1; }
+    .footer-copy { font-size: 13px; color: var(--subtle); }
+
+    @media (max-width: 600px) {
+      .footer-inner { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="container">
+      <div class="nav-inner">
+        <a href="index.html" class="wordmark">Just <span>Euchre</span></a>
+        <a href="index.html" class="nav-back">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M9 1L3 7L9 13" stroke="#B8B8B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Back
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <div class="page-label">Legal</div>
+      <h1 class="page-title">Privacy Policy</h1>
+      <p class="page-meta">Last updated: March 27, 2026</p>
+    </div>
+
+    <div class="prose">
+
+      <div class="callout">
+        <p><strong>The short version:</strong> Just Euchre collects no personal data, creates no accounts, and sends nothing off your device. Your game is yours.</p>
+      </div>
+
+      <h2>Overview</h2>
+      <p>Just Euchre ("the App") is a daily card game for iOS. We are committed to protecting your privacy. This policy describes what data the App collects, how it is used, and your rights as a user.</p>
+
+      <h2>Data We Collect</h2>
+      <p>Just Euchre does <strong>not collect, transmit, or store any personal information</strong> on external servers. The App has no user accounts, no login, and no backend.</p>
+      <p>All game data — including your streak, game history, and settings — is stored locally on your device using Apple's standard on-device storage (UserDefaults / app sandbox). This data never leaves your device.</p>
+
+      <h2>Push Notifications</h2>
+      <p>The App may request permission to send you daily push notifications as reminders to play your game of the day. These notifications are scheduled locally on your device using iOS notification APIs. No notification content or metadata is transmitted to any server.</p>
+      <p>You can disable notifications at any time in <strong>Settings → Notifications → Just Euchre</strong>.</p>
+
+      <h2>Analytics & Tracking</h2>
+      <p>Just Euchre contains <strong>no third-party analytics, advertising SDKs, or tracking libraries</strong>. We do not use:</p>
+      <ul>
+        <li>Crash reporting services</li>
+        <li>Advertising networks or identifiers (IDFA)</li>
+        <li>Analytics platforms (e.g. Firebase, Mixpanel, Amplitude)</li>
+        <li>Session recording or heatmap tools</li>
+      </ul>
+
+      <h2>Third-Party Services</h2>
+      <p>The App is distributed via the Apple App Store. Apple may collect certain usage data in accordance with their own privacy policy. Just Euchre itself does not integrate any third-party services or SDKs beyond Apple's own frameworks.</p>
+
+      <h2>Children's Privacy</h2>
+      <p>Just Euchre does not knowingly collect any information from anyone, including children under the age of 13. Because no data is collected by the App, it is safe for all ages.</p>
+
+      <h2>Changes to This Policy</h2>
+      <p>If this policy changes, the updated version will be posted here with a revised date. Material changes will be noted in the App's release notes.</p>
+
+      <h2>Contact</h2>
+      <p>Questions about this privacy policy? Reach out at <a href="mailto:ryland.w.dean.dev@gmail.com">ryland.w.dean.dev@gmail.com</a> or visit the <a href="support.html">Support page</a>.</p>
+
+    </div>
+  </div>
+
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <span class="footer-brand">Just Euchre</span>
+        <span class="footer-suits">♠ <span class="red">♥</span> <span class="red">♦</span> ♣</span>
+        <div class="footer-links">
+          <a href="privacy.html">Privacy</a>
+          <a href="support.html">Support</a>
+        </div>
+        <span class="footer-copy">© 2026 Just Euchre.</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Just Euchre — One game a day.</title>
+  <meta name="description" content="One game a day. No frills. Just the best card game ever made." />
+  <meta property="og:title" content="Just Euchre" />
+  <meta property="og:description" content="One game a day. No frills. Just the best card game ever made." />
+  <meta name="theme-color" content="#080B12" />
+
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080B12;
+      --surface:   #1A212C;
+      --pill:      #161C26;
+      --mint:      #52F6AA;
+      --red:       #FB595E;
+      --gold:      #FDD758;
+      --white:     #FFFFFF;
+      --muted:     #B8B8B8;
+      --subtle:    #8C8C8C;
+      --border:    #474747;
+      --radius:    14px;
+      --font:      -apple-system, system-ui, "Helvetica Neue", sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--white);
+      font-family: var(--font);
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Layout Helpers ───────────────────────────────────────── */
+    .container {
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── Nav ──────────────────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+
+    .wordmark {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      color: var(--white);
+    }
+
+    .wordmark span {
+      color: var(--mint);
+    }
+
+    .btn-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 8px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--white);
+      cursor: pointer;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-pill:hover { opacity: 0.75; }
+
+    .btn-pill.mint {
+      background: var(--mint);
+      border-color: var(--mint);
+      color: var(--bg);
+    }
+
+    /* ── Hero ─────────────────────────────────────────────────── */
+    .hero {
+      padding: 80px 0 72px;
+    }
+
+    .hero-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 5px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--mint);
+      margin-bottom: 24px;
+      letter-spacing: 0.2px;
+    }
+
+    .hero-eyebrow::before {
+      content: '';
+      display: block;
+      width: 7px;
+      height: 7px;
+      background: var(--mint);
+      border-radius: 50%;
+    }
+
+    .hero-headline {
+      font-size: clamp(38px, 5.5vw, 56px);
+      font-weight: 700;
+      letter-spacing: -1.5px;
+      line-height: 1.05;
+      margin-bottom: 20px;
+    }
+
+    .hero-headline em {
+      font-style: normal;
+      color: var(--mint);
+    }
+
+    .hero-tagline {
+      font-size: 17px;
+      color: var(--muted);
+      line-height: 1.65;
+      margin-bottom: 36px;
+      max-width: 420px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--mint);
+      color: var(--bg);
+      border: none;
+      border-radius: var(--radius);
+      padding: 13px 24px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      letter-spacing: -0.2px;
+    }
+
+    .btn-primary:hover { opacity: 0.82; }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--pill);
+      color: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 13px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .btn-secondary:hover { opacity: 0.7; }
+
+    /* Phone mockup */
+    .phone-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .phone-mockup {
+      position: relative;
+      width: 240px;
+      aspect-ratio: 9 / 19.5;
+      background: var(--surface);
+      border-radius: 36px;
+      border: 2px solid var(--mint);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .phone-mockup::before {
+      content: '';
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 72px;
+      height: 10px;
+      background: var(--pill);
+      border-radius: 100px;
+    }
+
+    .phone-screenshot-placeholder {
+      width: 82%;
+      aspect-ratio: 1;
+      background: var(--pill);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .placeholder-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--subtle);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* Suit decoration on phone */
+    .phone-suits {
+      display: flex;
+      gap: 10px;
+    }
+
+    .phone-suit {
+      font-size: 18px;
+      opacity: 0.3;
+    }
+
+    .phone-suit.red { color: var(--red); opacity: 0.45; }
+
+    /* ── Section shared ───────────────────────────────────────── */
+    section { padding: 80px 0; }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--mint);
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-size: clamp(26px, 4vw, 36px);
+      font-weight: 700;
+      letter-spacing: -0.8px;
+      line-height: 1.15;
+      margin-bottom: 48px;
+    }
+
+    .section-title em {
+      font-style: normal;
+      color: var(--mint);
+    }
+
+    /* ── Divider ──────────────────────────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Features ─────────────────────────────────────────────── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      padding: 32px 28px;
+      transition: background 0.15s;
+    }
+
+    .feature-card:hover { background: var(--pill); }
+
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      margin-bottom: 18px;
+    }
+
+    .feature-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+
+    .feature-desc {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── How to Play ──────────────────────────────────────────── */
+    #how-to-play { background: var(--bg); }
+
+    .rules-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .rule-item {
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 22px;
+    }
+
+    .rule-num {
+      flex-shrink: 0;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--mint);
+      letter-spacing: 0.5px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+
+    .rule-text {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .rule-text strong {
+      color: var(--white);
+      font-weight: 600;
+    }
+
+    /* ── Screenshots ──────────────────────────────────────────── */
+    #screenshots { background: var(--bg); }
+
+    .screenshots-row {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .screenshot-frame {
+      width: 200px;
+      aspect-ratio: 9 / 19.5;
+      background: var(--surface);
+      border-radius: 30px;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-shrink: 0;
+      transition: border-color 0.15s;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .screenshot-frame::before {
+      content: '';
+      position: absolute;
+      top: 13px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 8px;
+      background: var(--pill);
+      border-radius: 100px;
+    }
+
+    .screenshot-frame:hover {
+      border-color: var(--mint);
+    }
+
+    .screenshot-inner {
+      width: 78%;
+      aspect-ratio: 9 / 16;
+      background: var(--pill);
+      border-radius: 8px;
+      border: 1px dashed var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .screenshot-icon {
+      font-size: 24px;
+      opacity: 0.25;
+    }
+
+    .screenshot-cap {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--subtle);
+    }
+
+    /* ── App Store CTA ────────────────────────────────────────── */
+    .cta-section {
+      padding: 80px 0;
+      text-align: center;
+    }
+
+    .cta-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 56px 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .cta-suits {
+      display: flex;
+      gap: 16px;
+      font-size: 28px;
+      margin-bottom: 4px;
+    }
+
+    .cta-suit-red { color: var(--red); }
+
+    .cta-title {
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 700;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      max-width: 520px;
+      text-align: center;
+    }
+
+    .cta-title em {
+      font-style: normal;
+      color: var(--mint);
+    }
+
+    .cta-sub {
+      font-size: 16px;
+      color: var(--muted);
+      max-width: 400px;
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    /* ── Footer ───────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0;
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .footer-brand {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--white);
+    }
+
+    .footer-suits {
+      font-size: 16px;
+      color: var(--subtle);
+      letter-spacing: 2px;
+    }
+
+    .footer-suits .red { color: var(--red); opacity: 0.7; }
+
+    .footer-copy {
+      font-size: 13px;
+      color: var(--subtle);
+    }
+
+    /* ── Responsive ───────────────────────────────────────────── */
+    @media (max-width: 700px) {
+      .hero-inner {
+        grid-template-columns: 1fr;
+        gap: 48px;
+      }
+
+      .phone-wrap { order: -1; }
+
+      .phone-mockup { width: 190px; }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .rules-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .screenshots-row {
+        gap: 14px;
+      }
+
+      .screenshot-frame { width: 160px; }
+
+      .cta-box { padding: 40px 24px; }
+
+      .footer-inner { flex-direction: column; align-items: flex-start; }
+
+      .hero-actions { flex-direction: column; }
+      .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
+    }
+
+    @media (max-width: 440px) {
+      .screenshot-frame { width: 130px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Nav ────────────────────────────────────────────────── -->
+  <nav>
+    <div class="container">
+      <div class="nav-inner">
+        <span class="wordmark">Just <span>Euchre</span></span>
+        <a href="#" class="btn-pill">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6.5 0C5.37 0 4.45 0.86 4.45 1.92C3.28 1.92 2.17 2.54 1.59 3.55C1.0 4.56 1.07 5.8 1.75 6.75C1.07 7.7 1.0 8.94 1.59 9.95C2.17 10.96 3.28 11.58 4.45 11.58V13H8.55V11.58C9.72 11.58 10.83 10.96 11.41 9.95C12.0 8.94 11.93 7.7 11.25 6.75C11.93 5.8 12.0 4.56 11.41 3.55C10.83 2.54 9.72 1.92 8.55 1.92C8.55 0.86 7.63 0 6.5 0Z" fill="white"/>
+          </svg>
+          App Store
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Hero ───────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <div class="hero-eyebrow">Daily Card Game · iOS</div>
+          <h1 class="hero-headline">
+            The&nbsp;best card game.<br>
+            <em>Once a day.</em>
+          </h1>
+          <p class="hero-tagline">
+            One game a day. No frills. Just the best card game ever made.
+          </p>
+          <div class="hero-actions">
+            <a href="#" class="btn-primary">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 0C6.9 0 6 0.86 6 1.92C4.83 1.92 3.72 2.54 3.14 3.55C2.55 4.56 2.62 5.8 3.3 6.75C2.62 7.7 2.55 8.94 3.14 9.95C3.72 10.96 4.83 11.58 6 11.58V16H10V11.58C11.17 11.58 12.28 10.96 12.86 9.95C13.45 8.94 13.38 7.7 12.7 6.75C13.38 5.8 13.45 4.56 12.86 3.55C12.28 2.54 11.17 1.92 10 1.92C10 0.86 9.1 0 8 0Z" fill="#080B12"/>
+              </svg>
+              Download on App Store
+            </a>
+            <a href="#how-to-play" class="btn-secondary">
+              How to Play
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M7 1L13 7L7 13M1 7H13" stroke="#B8B8B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+
+        <div class="phone-wrap">
+          <div class="phone-mockup">
+            <div class="phone-screenshot-placeholder">
+              <span class="placeholder-label">Screenshot</span>
+            </div>
+            <div class="phone-suits">
+              <span class="phone-suit">♠</span>
+              <span class="phone-suit red">♥</span>
+              <span class="phone-suit red">♦</span>
+              <span class="phone-suit">♣</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ── Features ───────────────────────────────────────────── -->
+  <section id="features">
+    <div class="container">
+      <div class="section-label">Features</div>
+      <h2 class="section-title">Everything you need.<br><em>Nothing you don't.</em></h2>
+
+      <div class="features-grid">
+
+        <div class="feature-card">
+          <div class="feature-icon">📅</div>
+          <div class="feature-title">Daily Game</div>
+          <p class="feature-desc">One fresh deal every day. Come back tomorrow and build your streak. No binge — just one good game.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🔥</div>
+          <div class="feature-title">Streak Tracking</div>
+          <p class="feature-desc">Win at least 3 of 5 tricks per round. Your streak is your reputation. Don't break the chain.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <div class="feature-title">Loner Mode</div>
+          <p class="feature-desc">Go solo, win all 5 tricks, score 4 points. Drop your partner and bet it all. Big risk, big flex.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🚫</div>
+          <div class="feature-title">No Accounts. No Ads.</div>
+          <p class="feature-desc">No sign-ups. No trackers. No upsells. Download it and play. That's the whole deal.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ── How to Play ─────────────────────────────────────────── -->
+  <section id="how-to-play">
+    <div class="container">
+      <div class="section-label">Rules</div>
+      <h2 class="section-title">How to Play</h2>
+
+      <div class="rules-grid">
+
+        <div class="rule-item">
+          <div class="rule-num">01</div>
+          <p class="rule-text"><strong>You and your partner</strong> vs. two bots. Work together or go it alone.</p>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-num">02</div>
+          <p class="rule-text"><strong>One suit is trump</strong> each round. The Jack of that suit — the Right Bower — is the most powerful card in the game.</p>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-num">03</div>
+          <p class="rule-text"><strong>Win tricks</strong> to score points. First team to <strong>10 points</strong> wins the game.</p>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-num">04</div>
+          <p class="rule-text"><strong>24-card deck</strong> — 9s through Aces, four suits. Fast games, deep strategy.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ── Screenshots ─────────────────────────────────────────── -->
+  <section id="screenshots">
+    <div class="container">
+      <div class="section-label">Screenshots</div>
+      <h2 class="section-title">See it in action.</h2>
+
+      <div class="screenshots-row">
+
+        <div class="screenshot-frame">
+          <div class="screenshot-inner">
+            <div class="screenshot-icon">🏠</div>
+            <div class="screenshot-cap">Home</div>
+          </div>
+        </div>
+
+        <div class="screenshot-frame">
+          <div class="screenshot-inner">
+            <div class="screenshot-icon">🃏</div>
+            <div class="screenshot-cap">Game</div>
+          </div>
+        </div>
+
+        <div class="screenshot-frame">
+          <div class="screenshot-inner">
+            <div class="screenshot-icon">📊</div>
+            <div class="screenshot-cap">Results</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ── CTA ────────────────────────────────────────────────── -->
+  <section class="cta-section">
+    <div class="container">
+      <div class="cta-box">
+        <div class="cta-suits">
+          <span>♠</span>
+          <span class="cta-suit-red">♥</span>
+          <span class="cta-suit-red">♦</span>
+          <span>♣</span>
+        </div>
+        <h2 class="cta-title">Your daily game<br>is waiting.</h2>
+        <p class="cta-sub">Free on the App Store. One game a day. No frills. Just the best card game ever made.</p>
+        <a href="#" class="btn-primary" style="font-size: 16px; padding: 15px 32px;">
+          Download Free
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ─────────────────────────────────────────────── -->
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <span class="footer-brand">Just Euchre</span>
+        <span class="footer-suits">
+          ♠ <span class="red">♥</span> <span class="red">♦</span> ♣
+        </span>
+        <div style="display:flex;gap:20px;">
+          <a href="privacy.html" style="font-size:13px;color:var(--subtle);transition:color 0.15s;">Privacy</a>
+          <a href="support.html" style="font-size:13px;color:var(--subtle);transition:color 0.15s;">Support</a>
+        </div>
+        <span class="footer-copy">© 2026 Just Euchre. All rights reserved.</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
