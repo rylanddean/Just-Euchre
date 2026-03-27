@@ -25,7 +25,6 @@ final class SettingsViewController: UIViewController {
         view.backgroundColor = background
         buildUI()
 
-        NotificationCenter.default.addObserver(self, selector: #selector(dailyDidChange), name: DailyGameStore.didChangeNotification, object: nil)
     }
 
     private func buildUI() {
@@ -71,15 +70,6 @@ final class SettingsViewController: UIViewController {
     private func buildSections() {
         contentStack.arrangedSubviews.forEach { contentStack.removeArrangedSubview($0); $0.removeFromSuperview() }
 
-        contentStack.addArrangedSubview(sectionTitle("Stats"))
-        let streakRow = SettingsRowView(surface: surface, border: border)
-        let longestStreak = DailyGameStore.longestStreak
-        let streakSubtitle = longestStreak > 0 ? "\(longestStreak) day\(longestStreak == 1 ? "" : "s")" : "No streak yet"
-        streakRow.configure(title: "Longest streak", subtitle: streakSubtitle, icon: "flame.fill", showsChevron: false)
-        streakRow.isUserInteractionEnabled = false
-        contentStack.addArrangedSubview(streakRow)
-
-        contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("Gameplay"))
 
         let suggestRow = SettingsToggleRowView(surface: surface, border: border)
@@ -193,11 +183,6 @@ final class SettingsViewController: UIViewController {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
         return "\(version) (\(build))"
-    }
-
-    @objc private func dailyDidChange() {
-        // Keep Player subtitle (and future items) fresh.
-        buildSections()
     }
 
     // MARK: - Actions

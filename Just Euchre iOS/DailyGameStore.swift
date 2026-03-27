@@ -3,6 +3,10 @@
 //  Just Euchre iOS
 //
 //  One-game-per-day gate + streak tracking.
+//  Three game states: win, loss, incomplete.
+//  - currentWinStreak: consecutive days with a win (fire icon)
+//  - currentCompletedStreak: consecutive days with any completed game (checkmark icon)
+//  - longestStreak: longest winning streak ever
 //
 
 import Foundation
@@ -11,12 +15,15 @@ enum DailyGameStore {
     static let didChangeNotification = Notification.Name("justeuchre.daily.didChange")
 
     private enum Keys {
-        static let startedDay = "justeuchre.daily.startedDay" // Date at start-of-day
-        static let completedDay = "justeuchre.daily.completedDay" // Date at start-of-day
+        static let startedDay        = "justeuchre.daily.startedDay"       // Date at start-of-day
+        static let completedDay      = "justeuchre.daily.completedDay"     // Date at start-of-day
         static let lastCompletionDay = "justeuchre.daily.lastCompletionDay" // Date at start-of-day
-        static let currentStreak = "justeuchre.daily.currentStreak"
-        static let longestStreak = "justeuchre.daily.longestStreak"
-        static let longestStreakDate = "justeuchre.daily.longestStreakDate" // Date at start-of-day
+        static let currentStreak     = "justeuchre.daily.currentStreak"    // Completed-game streak count
+        static let lastWinDay        = "justeuchre.daily.lastWinDay"       // Date at start-of-day
+        static let currentWinStreak  = "justeuchre.daily.currentWinStreak"
+        static let longestWinStreak      = "justeuchre.daily.longestWinStreak"
+        static let longestWinStreakDate  = "justeuchre.daily.longestWinStreakDate"
+        static let longestCompletedStreak = "justeuchre.daily.longestCompletedStreak"
     }
 
     static func todayKeyDate(now: Date = Date()) -> Date {
@@ -45,44 +52,95 @@ enum DailyGameStore {
         NotificationCenter.default.post(name: didChangeNotification, object: nil)
     }
 
-    static func markCompletedToday(now: Date = Date()) {
+    /// Call when the daily game ends. `didWin` determines whether the win streak advances.
+    /// An incomplete day (started but never completed before next day) does not call this,
+    /// which naturally breaks both streaks via the staleness checks in the computed properties.
+    static func markCompletedToday(didWin: Bool, now: Date = Date()) {
         let today = todayKeyDate(now: now)
         if isCompletedToday(now: now) { return }
 
         let defaults = UserDefaults.standard
-        let lastCompletion = defaults.object(forKey: Keys.lastCompletionDay) as? Date
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)
 
-        var current = defaults.integer(forKey: Keys.currentStreak)
-        if let lastCompletion, let yesterday, Calendar.current.isDate(lastCompletion, inSameDayAs: yesterday) {
-            current += 1
+        // --- Completed-game streak ---
+        let lastCompletion = defaults.object(forKey: Keys.lastCompletionDay) as? Date
+        var completedStreak = defaults.integer(forKey: Keys.currentStreak)
+        if let lastCompletion, let yesterday,
+           Calendar.current.isDate(lastCompletion, inSameDayAs: yesterday) {
+            completedStreak += 1
         } else {
-            current = 1
+            completedStreak = 1
+        }
+
+        // --- Win streak ---
+        let lastWin = defaults.object(forKey: Keys.lastWinDay) as? Date
+        var winStreak = defaults.integer(forKey: Keys.currentWinStreak)
+        if didWin {
+            if let lastWin, let yesterday,
+               Calendar.current.isDate(lastWin, inSameDayAs: yesterday) {
+                winStreak += 1
+            } else {
+                winStreak = 1
+            }
+            defaults.set(today, forKey: Keys.lastWinDay)
+            defaults.set(winStreak, forKey: Keys.currentWinStreak)
+
+            let longest = defaults.integer(forKey: Keys.longestWinStreak)
+            if winStreak > longest {
+                defaults.set(winStreak, forKey: Keys.longestWinStreak)
+                defaults.set(today, forKey: Keys.longestWinStreakDate)
+            }
+        } else {
+            // A loss resets the win streak
+            defaults.set(0, forKey: Keys.currentWinStreak)
         }
 
         defaults.set(today, forKey: Keys.completedDay)
         defaults.set(today, forKey: Keys.lastCompletionDay)
-        defaults.set(current, forKey: Keys.currentStreak)
+        defaults.set(completedStreak, forKey: Keys.currentStreak)
 
-        let longest = defaults.integer(forKey: Keys.longestStreak)
-        if current > longest {
-            defaults.set(current, forKey: Keys.longestStreak)
-            defaults.set(today, forKey: Keys.longestStreakDate)
+        let longestCompleted = defaults.integer(forKey: Keys.longestCompletedStreak)
+        if completedStreak > longestCompleted {
+            defaults.set(completedStreak, forKey: Keys.longestCompletedStreak)
         }
 
         NotificationCenter.default.post(name: didChangeNotification, object: nil)
     }
 
-    static var longestStreak: Int {
-        UserDefaults.standard.integer(forKey: Keys.longestStreak)
+    /// Consecutive winning days. Returns 0 if the last win was more than 1 day ago (streak broken by incomplete or loss).
+    static var currentWinStreak: Int {
+        let defaults = UserDefaults.standard
+        guard let lastWin = defaults.object(forKey: Keys.lastWinDay) as? Date else { return 0 }
+        let today = todayKeyDate()
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
+        guard Calendar.current.isDate(lastWin, inSameDayAs: today) ||
+              Calendar.current.isDate(lastWin, inSameDayAs: yesterday) else { return 0 }
+        return defaults.integer(forKey: Keys.currentWinStreak)
     }
 
-    static var currentStreak: Int {
-        UserDefaults.standard.integer(forKey: Keys.currentStreak)
+    /// Consecutive days with any completed game (win or loss). Returns 0 if broken by an incomplete day.
+    static var currentCompletedStreak: Int {
+        let defaults = UserDefaults.standard
+        guard let lastCompletion = defaults.object(forKey: Keys.lastCompletionDay) as? Date else { return 0 }
+        let today = todayKeyDate()
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
+        guard Calendar.current.isDate(lastCompletion, inSameDayAs: today) ||
+              Calendar.current.isDate(lastCompletion, inSameDayAs: yesterday) else { return 0 }
+        return defaults.integer(forKey: Keys.currentStreak)
+    }
+
+    /// Longest winning streak ever recorded.
+    static var longestStreak: Int {
+        UserDefaults.standard.integer(forKey: Keys.longestWinStreak)
+    }
+
+    /// Longest completed-game streak ever recorded (wins + losses, no incompletes).
+    static var longestCompletedStreak: Int {
+        UserDefaults.standard.integer(forKey: Keys.longestCompletedStreak)
     }
 
     static var longestStreakDate: Date? {
-        UserDefaults.standard.object(forKey: Keys.longestStreakDate) as? Date
+        UserDefaults.standard.object(forKey: Keys.longestWinStreakDate) as? Date
     }
 
     // MARK: - Developer utilities
@@ -91,13 +149,16 @@ enum DailyGameStore {
         let today = todayKeyDate(now: now)
         let defaults = UserDefaults.standard
 
-        if let started = defaults.object(forKey: Keys.startedDay) as? Date, Calendar.current.isDate(started, inSameDayAs: today) {
+        if let started = defaults.object(forKey: Keys.startedDay) as? Date,
+           Calendar.current.isDate(started, inSameDayAs: today) {
             defaults.removeObject(forKey: Keys.startedDay)
         }
-        if let completed = defaults.object(forKey: Keys.completedDay) as? Date, Calendar.current.isDate(completed, inSameDayAs: today) {
+        if let completed = defaults.object(forKey: Keys.completedDay) as? Date,
+           Calendar.current.isDate(completed, inSameDayAs: today) {
             defaults.removeObject(forKey: Keys.completedDay)
         }
-        if let last = defaults.object(forKey: Keys.lastCompletionDay) as? Date, Calendar.current.isDate(last, inSameDayAs: today) {
+        if let last = defaults.object(forKey: Keys.lastCompletionDay) as? Date,
+           Calendar.current.isDate(last, inSameDayAs: today) {
             defaults.removeObject(forKey: Keys.lastCompletionDay)
         }
 
@@ -110,8 +171,11 @@ enum DailyGameStore {
         defaults.removeObject(forKey: Keys.completedDay)
         defaults.removeObject(forKey: Keys.lastCompletionDay)
         defaults.removeObject(forKey: Keys.currentStreak)
-        defaults.removeObject(forKey: Keys.longestStreak)
-        defaults.removeObject(forKey: Keys.longestStreakDate)
+        defaults.removeObject(forKey: Keys.lastWinDay)
+        defaults.removeObject(forKey: Keys.currentWinStreak)
+        defaults.removeObject(forKey: Keys.longestWinStreak)
+        defaults.removeObject(forKey: Keys.longestWinStreakDate)
+        defaults.removeObject(forKey: Keys.longestCompletedStreak)
 
         NotificationCenter.default.post(name: didChangeNotification, object: nil)
     }

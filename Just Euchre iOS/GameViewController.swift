@@ -222,16 +222,18 @@ final class GameViewController: UIViewController {
         guard game.winningTeam != nil else { return }
         didRecordOutcome = true
 
+        let didWin = game.winningTeam == 0
+
         // Prevent duplicate writes if we restore a finished game from persistence.
         let today = DailyGameStore.todayKeyDate()
         if let last = GameHistoryStore.entries().first, Calendar.current.isDate(last.date, inSameDayAs: today) {
-            DailyGameStore.markCompletedToday()
+            DailyGameStore.markCompletedToday(didWin: didWin)
             GameStateStore.clear()
             return
         }
 
         GameHistoryStore.addResult(yourScore: game.scores[0], theirScore: game.scores[1])
-        DailyGameStore.markCompletedToday()
+        DailyGameStore.markCompletedToday(didWin: didWin)
         GameStateStore.clear()
     }
 
@@ -1529,7 +1531,7 @@ private final class EuchreGame {
             let suits = Card.Suit.allCases.filter { $0 != banned }
             var buttons: [HumanButton] = [HumanButton(title: "Pass", kind: .pass)]
             for suit in suits {
-                buttons.append(HumanButton(title: "\(suit.symbol) \(suitName(suit))", kind: .callSuit(suit)))
+                buttons.append(HumanButton(title: suit.symbol, kind: .callSuit(suit)))
             }
             return buttons
         case .dealerDiscard:

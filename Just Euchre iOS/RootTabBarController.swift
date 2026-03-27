@@ -23,15 +23,19 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
         }
 
         let settings = SettingsViewController()
+        let stats = StatsViewController()
 
         homeNav.setNavigationBarHidden(true, animated: false)
         let settingsNav = UINavigationController(rootViewController: settings)
         settingsNav.setNavigationBarHidden(true, animated: false)
+        let statsNav = UINavigationController(rootViewController: stats)
+        statsNav.setNavigationBarHidden(true, animated: false)
 
         homeNav.tabBarItem = UITabBarItem(title: "Home", image: UIImage(systemName: "house"), tag: 0)
-        settingsNav.tabBarItem = UITabBarItem(title: "Settings", image: UIImage(systemName: "gearshape"), tag: 1)
+        statsNav.tabBarItem = UITabBarItem(title: "Stats", image: UIImage(systemName: "calendar"), tag: 1)
+        settingsNav.tabBarItem = UITabBarItem(title: "Settings", image: UIImage(systemName: "gearshape"), tag: 2)
 
-        viewControllers = [homeNav, settingsNav]
+        viewControllers = [homeNav, statsNav, settingsNav]
         selectedIndex = 0
 
         let appearance = UITabBarAppearance()
