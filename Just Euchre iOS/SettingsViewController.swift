@@ -5,12 +5,16 @@
 
 import StoreKit
 import UIKit
+import UserNotifications
 
 final class SettingsViewController: UIViewController {
 
     private let background = UIColor(red: 8/255, green: 11/255, blue: 18/255, alpha: 1)
     private let surface = UIColor(red: 26/255, green: 33/255, blue: 44/255, alpha: 1)
     private let border = UIColor(white: 0.28, alpha: 1)
+
+    private weak var notificationToggleRow: SettingsToggleRowView?
+    private weak var notificationTimeRow: SettingsRowView?
 
     private let titleLabel = UILabel()
     private let scrollView = UIScrollView()
@@ -36,7 +40,7 @@ final class SettingsViewController: UIViewController {
         contentStack.axis = .vertical
         contentStack.alignment = .fill
         contentStack.distribution = .fill
-        contentStack.spacing = 14
+        contentStack.spacing = 8
         contentStack.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(titleLabel)
@@ -67,16 +71,33 @@ final class SettingsViewController: UIViewController {
     private func buildSections() {
         contentStack.arrangedSubviews.forEach { contentStack.removeArrangedSubview($0); $0.removeFromSuperview() }
 
-        contentStack.addArrangedSubview(sectionTitle("Player"))
-        let playerRow = SettingsRowView(surface: surface, border: border)
-        playerRow.configure(title: "Profile", subtitle: "\(ProfileStore.emoji) \(ProfileStore.name)", icon: "person.circle", showsChevron: true)
-        playerRow.onTap = { [weak self] in
-            let vc = ProfileViewController()
-            vc.modalPresentationStyle = .pageSheet
-            self?.present(vc, animated: true)
-        }
-        contentStack.addArrangedSubview(playerRow)
+        contentStack.addArrangedSubview(sectionTitle("Stats"))
+        let streakRow = SettingsRowView(surface: surface, border: border)
+        let longestStreak = DailyGameStore.longestStreak
+        let streakSubtitle = longestStreak > 0 ? "\(longestStreak) day\(longestStreak == 1 ? "" : "s")" : "No streak yet"
+        streakRow.configure(title: "Longest streak", subtitle: streakSubtitle, icon: "flame.fill", showsChevron: false)
+        streakRow.isUserInteractionEnabled = false
+        contentStack.addArrangedSubview(streakRow)
 
+        contentStack.addArrangedSubview(sectionSpacer())
+        contentStack.addArrangedSubview(sectionTitle("Notifications"))
+
+        let toggleRow = SettingsToggleRowView(surface: surface, border: border)
+        toggleRow.configure(title: "Daily reminder", icon: "bell.fill", isOn: NotificationStore.isEnabled)
+        toggleRow.onToggle = { [weak self] isOn in
+            self?.handleNotificationToggle(isOn: isOn, toggleRow: toggleRow)
+        }
+        contentStack.addArrangedSubview(toggleRow)
+        notificationToggleRow = toggleRow
+
+        let timeRow = SettingsRowView(surface: surface, border: border)
+        timeRow.configure(title: "Reminder time", subtitle: NotificationStore.timeDisplayString, icon: "clock.fill", showsChevron: true)
+        timeRow.onTap = { [weak self] in self?.showTimePicker() }
+        timeRow.isHidden = !NotificationStore.isEnabled
+        contentStack.addArrangedSubview(timeRow)
+        notificationTimeRow = timeRow
+
+        contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("Card Packs"))
         let packsRow = SettingsRowView(surface: surface, border: border)
         packsRow.configure(title: "Card packs", subtitle: "Coming soon", icon: "rectangle.stack.fill", showsChevron: false)
@@ -84,6 +105,7 @@ final class SettingsViewController: UIViewController {
         packsRow.alpha = 0.85
         contentStack.addArrangedSubview(packsRow)
 
+        contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("Support"))
 
         let coffeeRow = SettingsRowView(surface: surface, border: border)
@@ -100,14 +122,25 @@ final class SettingsViewController: UIViewController {
         }
         contentStack.addArrangedSubview(feedbackRow)
 
+        contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("About"))
+
+        let howToPlayRow = SettingsRowView(surface: surface, border: border)
+        howToPlayRow.configure(title: "How to play", subtitle: "Rules & scoring", icon: "book.fill", showsChevron: true)
+        howToPlayRow.onTap = { [weak self] in
+            let vc = HowToPlayViewController()
+            vc.modalPresentationStyle = .pageSheet
+            self?.present(vc, animated: true)
+        }
+        contentStack.addArrangedSubview(howToPlayRow)
+
 
         let versionRow = SettingsRowView(surface: surface, border: border)
         versionRow.configure(title: "App version", subtitle: appVersionText(), icon: "app", showsChevron: false)
         versionRow.alpha = 0.95
-        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(didLongPressVersionRow(_:)))
-        longPress.minimumPressDuration = 0.9
-        versionRow.addGestureRecognizer(longPress)
+        versionRow.onTap = { [weak self] in
+            self?.didTapVersionRow()
+        }
         contentStack.addArrangedSubview(versionRow)
 
         let devRow = SettingsRowView(surface: surface, border: border)
@@ -125,11 +158,18 @@ final class SettingsViewController: UIViewController {
         contentStack.addArrangedSubview(socialsRow)
     }
 
+    private func sectionSpacer() -> UIView {
+        let spacer = UIView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        spacer.heightAnchor.constraint(equalToConstant: 10).isActive = true
+        return spacer
+    }
+
     private func sectionTitle(_ title: String) -> UILabel {
         let label = UILabel()
         label.text = title.uppercased()
-        label.textColor = UIColor(white: 0.72, alpha: 1)
-        label.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        label.textColor = UIColor(white: 0.55, alpha: 1)
+        label.font = UIFont.systemFont(ofSize: 11, weight: .medium)
         return label
     }
 
@@ -214,9 +254,69 @@ final class SettingsViewController: UIViewController {
         }
     }
 
-    @objc private func didLongPressVersionRow(_ recognizer: UILongPressGestureRecognizer) {
-        guard recognizer.state == .began else { return }
+    // MARK: - Notifications
 
+    private func handleNotificationToggle(isOn: Bool, toggleRow: SettingsToggleRowView) {
+        if isOn {
+            DailyNotificationScheduler.enableNotifications { [weak self] granted in
+                toggleRow.setOn(granted, animated: true)
+                self?.notificationTimeRow?.isHidden = !granted
+                if !granted {
+                    self?.showNotificationDeniedAlert()
+                }
+            }
+        } else {
+            DailyNotificationScheduler.disableNotifications()
+            notificationTimeRow?.isHidden = true
+        }
+    }
+
+    private func showNotificationDeniedAlert() {
+        let alert = UIAlertController(
+            title: "Notifications off",
+            message: "Enable notifications for Just Euchre in Settings to receive daily reminders.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Open Settings", style: .default) { _ in
+            guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+            UIApplication.shared.open(url)
+        })
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
+    }
+
+    private func showTimePicker() {
+        let vc = NotificationTimePickerViewController(hour: NotificationStore.hour, minute: NotificationStore.minute)
+        vc.onTimeSaved = { [weak self] hour, minute in
+            NotificationStore.hour = hour
+            NotificationStore.minute = minute
+            DailyNotificationScheduler.reschedule()
+            self?.notificationTimeRow?.configure(
+                title: "Reminder time",
+                subtitle: NotificationStore.timeDisplayString,
+                icon: "clock.fill",
+                showsChevron: true
+            )
+        }
+        vc.modalPresentationStyle = .pageSheet
+        if let sheet = vc.sheetPresentationController {
+            sheet.detents = [.medium()]
+            sheet.prefersGrabberVisible = true
+        }
+        present(vc, animated: true)
+    }
+
+    private var versionTapCount = 0
+
+    private func didTapVersionRow() {
+        versionTapCount += 1
+        if versionTapCount >= 20 {
+            versionTapCount = 0
+            showDeveloperTools()
+        }
+    }
+
+    private func showDeveloperTools() {
         let sheet = UIAlertController(
             title: "Developer Tools",
             message: "Reset local state for testing.",
@@ -233,7 +333,6 @@ final class SettingsViewController: UIViewController {
             GameStateStore.clear()
             GameHistoryStore.clear()
             DailyGameStore.debugResetAll()
-            ProfileStore.clear()
             self?.showToast("Local data reset.")
         })
 
@@ -270,6 +369,76 @@ private enum CoffeePurchase {
     }
 }
 
+// MARK: - Toggle Row
+
+private final class SettingsToggleRowView: UIView {
+    private let surface: UIColor
+    private let border: UIColor
+
+    private let iconView    = UIImageView()
+    private let titleLabel  = UILabel()
+    private let toggle      = UISwitch()
+
+    var onToggle: ((Bool) -> Void)?
+
+    init(surface: UIColor, border: UIColor) {
+        self.surface = surface
+        self.border  = border
+        super.init(frame: .zero)
+
+        backgroundColor    = surface
+        layer.cornerRadius = 12
+
+        iconView.tintColor    = UIColor(white: 1, alpha: 0.65)
+        iconView.contentMode  = .scaleAspectFit
+
+        titleLabel.textColor  = .white
+        titleLabel.font       = UIFont.systemFont(ofSize: 16, weight: .semibold)
+
+        toggle.onTintColor = UIColor(red: 82/255, green: 246/255, blue: 170/255, alpha: 1)
+        toggle.addTarget(self, action: #selector(toggleChanged), for: .valueChanged)
+
+        [iconView, titleLabel, toggle].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            addSubview($0)
+        }
+
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 60),
+
+            iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18),
+            iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 22),
+            iconView.heightAnchor.constraint(equalToConstant: 22),
+
+            titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 12),
+            titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: toggle.leadingAnchor, constant: -12),
+
+            toggle.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -18),
+            toggle.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func configure(title: String, icon: String, isOn: Bool) {
+        iconView.image = UIImage(systemName: icon)
+        titleLabel.text = title
+        toggle.isOn = isOn
+    }
+
+    func setOn(_ on: Bool, animated: Bool) {
+        toggle.setOn(on, animated: animated)
+    }
+
+    @objc private func toggleChanged() {
+        onToggle?(toggle.isOn)
+    }
+}
+
+// MARK: - Standard Row
+
 private final class SettingsRowView: UIControl {
     private let surface: UIColor
     private let border: UIColor
@@ -287,18 +456,16 @@ private final class SettingsRowView: UIControl {
         super.init(frame: .zero)
 
         backgroundColor = surface
-        layer.cornerRadius = 22
-        layer.borderWidth = 1
-        layer.borderColor = border.cgColor
+        layer.cornerRadius = 12
 
-        iconView.tintColor = .white
+        iconView.tintColor = UIColor(white: 1, alpha: 0.65)
         iconView.contentMode = .scaleAspectFit
 
         titleLabel.textColor = .white
         titleLabel.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
 
         subtitleLabel.textColor = UIColor(white: 0.72, alpha: 1)
-        subtitleLabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        subtitleLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
 
         chevron.tintColor = UIColor(white: 0.45, alpha: 1)
         chevron.contentMode = .scaleAspectFit
@@ -310,11 +477,12 @@ private final class SettingsRowView: UIControl {
 
         [iconView, textStack, chevron].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
+            $0.isUserInteractionEnabled = false
             addSubview($0)
         }
 
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: 72),
+            heightAnchor.constraint(equalToConstant: 60),
 
             iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18),
             iconView.centerYAnchor.constraint(equalTo: centerYAnchor),

@@ -185,7 +185,6 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
 
 private final class HomeCardView: UIControl {
     private let surface = UIColor(red: 26/255, green: 33/255, blue: 44/255, alpha: 1)
-    private let border = UIColor(white: 0.28, alpha: 1)
     private let iconView = UIImageView()
     private let titleLabel = UILabel()
     private let subtitleLabel = UILabel()
@@ -205,16 +204,10 @@ private final class HomeCardView: UIControl {
         super.init(frame: .zero)
 
         backgroundColor = surface
-        layer.cornerRadius = 22
-        layer.borderWidth = 1
-        layer.borderColor = border.cgColor
-        layer.shadowColor = UIColor.black.cgColor
-        layer.shadowOpacity = 0.20
-        layer.shadowRadius = 18
-        layer.shadowOffset = CGSize(width: 0, height: 14)
+        layer.cornerRadius = 14
 
         iconView.image = UIImage(systemName: icon)
-        iconView.tintColor = .white
+        iconView.tintColor = UIColor(white: 1, alpha: 0.65)
         iconView.contentMode = .scaleAspectFit
 
         titleLabel.text = title
@@ -223,7 +216,7 @@ private final class HomeCardView: UIControl {
 
         subtitleLabel.text = subtitle
         subtitleLabel.textColor = UIColor(white: 0.75, alpha: 1)
-        subtitleLabel.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+        subtitleLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
 
         [iconView, titleLabel, subtitleLabel].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
@@ -258,7 +251,6 @@ private final class HomeCardView: UIControl {
 
     func resetConfirmation() {
         confirmed = false
-        layer.borderColor = border.cgColor
         transform = .identity
     }
 
@@ -285,7 +277,7 @@ private final class HistoryCell: UITableViewCell {
         selectionStyle = .none
 
         dateLabel.textColor = UIColor(white: 0.62, alpha: 1)
-        dateLabel.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
+        dateLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
         dateLabel.textAlignment = .left
 
         resultLabel.textColor = .white
@@ -295,7 +287,7 @@ private final class HistoryCell: UITableViewCell {
         resultLabel.lineBreakMode = .byWordWrapping
 
         scoreLabel.textColor = UIColor(white: 0.72, alpha: 1)
-        scoreLabel.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
+        scoreLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
         scoreLabel.textAlignment = .right
 
         [dateLabel, resultLabel, scoreLabel].forEach {

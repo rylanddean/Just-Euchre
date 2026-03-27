@@ -13,7 +13,7 @@ import UIKit
 final class GameViewController: UIViewController {
 
     private let theme = Theme()
-    private var seatEmojis = [ProfileStore.emoji, "🦊", "🦉", "🤖"] // You, W, N, E
+    private var seatEmojis = ["🙂", "🦊", "🦉", "🤖"] // You, W, N, E
 
     private let titleLabel = UILabel()
     private let headerRow = UIStackView()
@@ -32,6 +32,8 @@ final class GameViewController: UIViewController {
     private let trickEast = CardView()
     private let trickSouth = CardView()
 
+    private let gameOverLabel = UILabel()
+
     private let actionRow = UIStackView()
     private let handRow = UIStackView()
 
@@ -49,13 +51,12 @@ final class GameViewController: UIViewController {
         view.backgroundColor = theme.background
         buildUI()
 
-        game.humanName = ProfileStore.name
+        game.humanName = "You"
         game.setBotNames(BotNameGenerator.nextBotNames(count: 3))
         game.onUpdate = { [weak self] in
             self?.render()
         }
 
-        NotificationCenter.default.addObserver(self, selector: #selector(profileDidChange), name: ProfileStore.didChangeNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(appDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(appWillResignActive), name: UIApplication.willResignActiveNotification, object: nil)
 
@@ -73,10 +74,9 @@ final class GameViewController: UIViewController {
         didRecordOutcome = false
         gameOverNudge = nil
         hasInitializedGame = true
-        seatEmojis[0] = ProfileStore.emoji
 
         game = EuchreGame()
-        game.humanName = ProfileStore.name
+        game.humanName = "You"
         game.setBotNames(BotNameGenerator.nextBotNames(count: 3))
         game.onUpdate = { [weak self] in
             self?.render()
@@ -109,7 +109,7 @@ final class GameViewController: UIViewController {
 
         statusLabel.textColor = theme.mutedText
         statusLabel.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
-        statusLabel.numberOfLines = 2
+        statusLabel.numberOfLines = 1
         statusLabel.textAlignment = .center
 
         trumpBadge.isHidden = true
@@ -178,7 +178,6 @@ final class GameViewController: UIViewController {
         headerRow.arrangedSubviews.forEach { headerRow.removeArrangedSubview($0); $0.removeFromSuperview() }
 
         // Seat order (clockwise): 0 = You (South), 1 = West, 2 = North, 3 = East
-        seatEmojis[0] = ProfileStore.emoji
         for index in 0..<4 {
             let badge = PlayerBadgeView(theme: theme)
             badge.setName(game.playerNames[index])
@@ -186,17 +185,6 @@ final class GameViewController: UIViewController {
             playerBadges.append(badge)
             headerRow.addArrangedSubview(badge)
         }
-    }
-
-    @objc private func profileDidChange() {
-        seatEmojis[0] = ProfileStore.emoji
-        game.humanName = ProfileStore.name
-
-        if !playerBadges.isEmpty {
-            playerBadges[0].setName(game.playerNames[0])
-            playerBadges[0].setEmoji(ProfileStore.emoji)
-        }
-        render()
     }
 
     private func recordOutcomeIfNeeded() {
@@ -242,8 +230,7 @@ final class GameViewController: UIViewController {
         guard let data = GameStateStore.loadIfToday(today: today) else { return }
         guard let state = try? JSONDecoder().decode(EuchreGamePersistedState.self, from: data) else { return }
         game.applyPersistedState(state)
-        game.humanName = ProfileStore.name
-        seatEmojis[0] = ProfileStore.emoji
+        game.humanName = "You"
         hasInitializedGame = true
     }
 
@@ -314,6 +301,19 @@ final class GameViewController: UIViewController {
         indicatorTopToUpcard = indicatorRow.topAnchor.constraint(equalTo: upcardView.bottomAnchor, constant: 10)
         indicatorTopToContainer = indicatorRow.topAnchor.constraint(equalTo: tableContainer.topAnchor, constant: 14)
         indicatorTopToUpcard?.isActive = true
+
+        gameOverLabel.numberOfLines = 0
+        gameOverLabel.textAlignment = .center
+        gameOverLabel.font = UIFont.systemFont(ofSize: 22, weight: .bold)
+        gameOverLabel.textColor = .white
+        gameOverLabel.isHidden = true
+        gameOverLabel.translatesAutoresizingMaskIntoConstraints = false
+        tableContainer.addSubview(gameOverLabel)
+        NSLayoutConstraint.activate([
+            gameOverLabel.leadingAnchor.constraint(equalTo: tableContainer.leadingAnchor, constant: 24),
+            gameOverLabel.trailingAnchor.constraint(equalTo: tableContainer.trailingAnchor, constant: -24),
+            gameOverLabel.centerYAnchor.constraint(equalTo: tableContainer.centerYAnchor),
+        ])
     }
 
     private func render() {
@@ -344,9 +344,12 @@ final class GameViewController: UIViewController {
             if gameOverNudge == nil {
                 gameOverNudge = OnDeviceNudgeGenerator.nextNudge()
             }
-            statusLabel.text = "\(game.statusText)\n\(gameOverNudge ?? "")"
+            statusLabel.text = game.statusText
+            gameOverLabel.text = gameOverNudge
+            gameOverLabel.isHidden = false
         } else {
             statusLabel.text = game.statusText
+            gameOverLabel.isHidden = true
         }
         recordOutcomeIfNeeded()
 
