@@ -5,12 +5,16 @@
 
 import StoreKit
 import UIKit
+import UserNotifications
 
 final class SettingsViewController: UIViewController {
 
     private let background = UIColor(red: 8/255, green: 11/255, blue: 18/255, alpha: 1)
     private let surface = UIColor(red: 26/255, green: 33/255, blue: 44/255, alpha: 1)
     private let border = UIColor(white: 0.28, alpha: 1)
+
+    private weak var notificationToggleRow: SettingsToggleRowView?
+    private weak var notificationTimeRow: SettingsRowView?
 
     private let titleLabel = UILabel()
     private let scrollView = UIScrollView()
@@ -76,6 +80,24 @@ final class SettingsViewController: UIViewController {
             self?.present(vc, animated: true)
         }
         contentStack.addArrangedSubview(playerRow)
+
+        contentStack.addArrangedSubview(sectionSpacer())
+        contentStack.addArrangedSubview(sectionTitle("Notifications"))
+
+        let toggleRow = SettingsToggleRowView(surface: surface, border: border)
+        toggleRow.configure(title: "Daily reminder", icon: "bell.fill", isOn: NotificationStore.isEnabled)
+        toggleRow.onToggle = { [weak self] isOn in
+            self?.handleNotificationToggle(isOn: isOn, toggleRow: toggleRow)
+        }
+        contentStack.addArrangedSubview(toggleRow)
+        notificationToggleRow = toggleRow
+
+        let timeRow = SettingsRowView(surface: surface, border: border)
+        timeRow.configure(title: "Reminder time", subtitle: NotificationStore.timeDisplayString, icon: "clock.fill", showsChevron: true)
+        timeRow.onTap = { [weak self] in self?.showTimePicker() }
+        timeRow.isHidden = !NotificationStore.isEnabled
+        contentStack.addArrangedSubview(timeRow)
+        notificationTimeRow = timeRow
 
         contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("Card Packs"))
@@ -234,6 +256,58 @@ final class SettingsViewController: UIViewController {
         }
     }
 
+    // MARK: - Notifications
+
+    private func handleNotificationToggle(isOn: Bool, toggleRow: SettingsToggleRowView) {
+        if isOn {
+            DailyNotificationScheduler.enableNotifications { [weak self] granted in
+                toggleRow.setOn(granted, animated: true)
+                self?.notificationTimeRow?.isHidden = !granted
+                if !granted {
+                    self?.showNotificationDeniedAlert()
+                }
+            }
+        } else {
+            DailyNotificationScheduler.disableNotifications()
+            notificationTimeRow?.isHidden = true
+        }
+    }
+
+    private func showNotificationDeniedAlert() {
+        let alert = UIAlertController(
+            title: "Notifications off",
+            message: "Enable notifications for Just Euchre in Settings to receive daily reminders.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Open Settings", style: .default) { _ in
+            guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+            UIApplication.shared.open(url)
+        })
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
+    }
+
+    private func showTimePicker() {
+        let vc = NotificationTimePickerViewController(hour: NotificationStore.hour, minute: NotificationStore.minute)
+        vc.onTimeSaved = { [weak self] hour, minute in
+            NotificationStore.hour = hour
+            NotificationStore.minute = minute
+            DailyNotificationScheduler.reschedule()
+            self?.notificationTimeRow?.configure(
+                title: "Reminder time",
+                subtitle: NotificationStore.timeDisplayString,
+                icon: "clock.fill",
+                showsChevron: true
+            )
+        }
+        vc.modalPresentationStyle = .pageSheet
+        if let sheet = vc.sheetPresentationController {
+            sheet.detents = [.medium()]
+            sheet.prefersGrabberVisible = true
+        }
+        present(vc, animated: true)
+    }
+
     private var versionTapCount = 0
 
     private func didTapVersionRow() {
@@ -297,6 +371,76 @@ private enum CoffeePurchase {
         }
     }
 }
+
+// MARK: - Toggle Row
+
+private final class SettingsToggleRowView: UIView {
+    private let surface: UIColor
+    private let border: UIColor
+
+    private let iconView    = UIImageView()
+    private let titleLabel  = UILabel()
+    private let toggle      = UISwitch()
+
+    var onToggle: ((Bool) -> Void)?
+
+    init(surface: UIColor, border: UIColor) {
+        self.surface = surface
+        self.border  = border
+        super.init(frame: .zero)
+
+        backgroundColor    = surface
+        layer.cornerRadius = 12
+
+        iconView.tintColor    = UIColor(white: 1, alpha: 0.65)
+        iconView.contentMode  = .scaleAspectFit
+
+        titleLabel.textColor  = .white
+        titleLabel.font       = UIFont.systemFont(ofSize: 16, weight: .semibold)
+
+        toggle.onTintColor = UIColor(red: 82/255, green: 246/255, blue: 170/255, alpha: 1)
+        toggle.addTarget(self, action: #selector(toggleChanged), for: .valueChanged)
+
+        [iconView, titleLabel, toggle].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            addSubview($0)
+        }
+
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 60),
+
+            iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18),
+            iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 22),
+            iconView.heightAnchor.constraint(equalToConstant: 22),
+
+            titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 12),
+            titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: toggle.leadingAnchor, constant: -12),
+
+            toggle.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -18),
+            toggle.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func configure(title: String, icon: String, isOn: Bool) {
+        iconView.image = UIImage(systemName: icon)
+        titleLabel.text = title
+        toggle.isOn = isOn
+    }
+
+    func setOn(_ on: Bool, animated: Bool) {
+        toggle.setOn(on, animated: animated)
+    }
+
+    @objc private func toggleChanged() {
+        onToggle?(toggle.isOn)
+    }
+}
+
+// MARK: - Standard Row
 
 private final class SettingsRowView: UIControl {
     private let surface: UIColor
