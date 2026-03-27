@@ -1,0 +1,139 @@
+{
+  "" : {
+    "diagnostics" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/Just Euchre iOS-primary.dia",
+    "emit-module-dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/Just Euchre iOS-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/Just Euchre iOS-primary-emit-module.dia",
+    "pch" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/Just Euchre iOS-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/Just Euchre iOS-primary.swiftdeps"
+  },
+  "/Users/rylanddean/Just Euchre/Just Euchre Shared/Renderer.swift" : {
+    "const-values" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/Renderer.swiftconstvalues",
+    "dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/Renderer.d",
+    "diagnostics" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/Renderer.dia",
+    "index-unit-output-path" : "/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/Renderer.o",
+    "llvm-bc" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/Renderer.bc",
+    "object" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/Renderer.o",
+    "swift-dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/Renderer.swiftdeps",
+    "swiftmodule" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/Renderer~partial.swiftmodule"
+  },
+  "/Users/rylanddean/Just Euchre/Just Euchre iOS/AppDelegate.swift" : {
+    "const-values" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/AppDelegate.swiftconstvalues",
+    "dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/AppDelegate.d",
+    "diagnostics" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/AppDelegate.dia",
+    "index-unit-output-path" : "/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/AppDelegate.o",
+    "llvm-bc" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/AppDelegate.bc",
+    "object" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/AppDelegate.o",
+    "swift-dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/AppDelegate.swiftdeps",
+    "swiftmodule" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/AppDelegate~partial.swiftmodule"
+  },
+  "/Users/rylanddean/Just Euchre/Just Euchre iOS/BotNameGenerator.swift" : {
+    "const-values" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/BotNameGenerator.swiftconstvalues",
+    "dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/BotNameGenerator.d",
+    "diagnostics" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/BotNameGenerator.dia",
+    "index-unit-output-path" : "/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/BotNameGenerator.o",
+    "llvm-bc" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/BotNameGenerator.bc",
+    "object" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/BotNameGenerator.o",
+    "swift-dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/BotNameGenerator.swiftdeps",
+    "swiftmodule" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/BotNameGenerator~partial.swiftmodule"
+  },
+  "/Users/rylanddean/Just Euchre/Just Euchre iOS/DailyGameStore.swift" : {
+    "const-values" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/DailyGameStore.swiftconstvalues",
+    "dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/DailyGameStore.d",
+    "diagnostics" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/DailyGameStore.dia",
+    "index-unit-output-path" : "/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/DailyGameStore.o",
+    "llvm-bc" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/DailyGameStore.bc",
+    "object" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/DailyGameStore.o",
+    "swift-dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/DailyGameStore.swiftdeps",
+    "swiftmodule" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/DailyGameStore~partial.swiftmodule"
+  },
+  "/Users/rylanddean/Just Euchre/Just Euchre iOS/GameHistoryStore.swift" : {
+    "const-values" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameHistoryStore.swiftconstvalues",
+    "dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameHistoryStore.d",
+    "diagnostics" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameHistoryStore.dia",
+    "index-unit-output-path" : "/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameHistoryStore.o",
+    "llvm-bc" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameHistoryStore.bc",
+    "object" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameHistoryStore.o",
+    "swift-dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameHistoryStore.swiftdeps",
+    "swiftmodule" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameHistoryStore~partial.swiftmodule"
+  },
+  "/Users/rylanddean/Just Euchre/Just Euchre iOS/GameViewController.swift" : {
+    "const-values" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameViewController.swiftconstvalues",
+    "dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameViewController.d",
+    "diagnostics" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameViewController.dia",
+    "index-unit-output-path" : "/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameViewController.o",
+    "llvm-bc" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameViewController.bc",
+    "object" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameViewController.o",
+    "swift-dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameViewController.swiftdeps",
+    "swiftmodule" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GameViewController~partial.swiftmodule"
+  },
+  "/Users/rylanddean/Just Euchre/Just Euchre iOS/HomeViewController.swift" : {
+    "const-values" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/HomeViewController.swiftconstvalues",
+    "dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/HomeViewController.d",
+    "diagnostics" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/HomeViewController.dia",
+    "index-unit-output-path" : "/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/HomeViewController.o",
+    "llvm-bc" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/HomeViewController.bc",
+    "object" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/HomeViewController.o",
+    "swift-dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/HomeViewController.swiftdeps",
+    "swiftmodule" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/HomeViewController~partial.swiftmodule"
+  },
+  "/Users/rylanddean/Just Euchre/Just Euchre iOS/OnDeviceNudgeGenerator.swift" : {
+    "const-values" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/OnDeviceNudgeGenerator.swiftconstvalues",
+    "dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/OnDeviceNudgeGenerator.d",
+    "diagnostics" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/OnDeviceNudgeGenerator.dia",
+    "index-unit-output-path" : "/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/OnDeviceNudgeGenerator.o",
+    "llvm-bc" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/OnDeviceNudgeGenerator.bc",
+    "object" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/OnDeviceNudgeGenerator.o",
+    "swift-dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/OnDeviceNudgeGenerator.swiftdeps",
+    "swiftmodule" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/OnDeviceNudgeGenerator~partial.swiftmodule"
+  },
+  "/Users/rylanddean/Just Euchre/Just Euchre iOS/ProfileStore.swift" : {
+    "const-values" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileStore.swiftconstvalues",
+    "dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileStore.d",
+    "diagnostics" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileStore.dia",
+    "index-unit-output-path" : "/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileStore.o",
+    "llvm-bc" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileStore.bc",
+    "object" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileStore.o",
+    "swift-dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileStore.swiftdeps",
+    "swiftmodule" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileStore~partial.swiftmodule"
+  },
+  "/Users/rylanddean/Just Euchre/Just Euchre iOS/ProfileViewController.swift" : {
+    "const-values" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileViewController.swiftconstvalues",
+    "dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileViewController.d",
+    "diagnostics" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileViewController.dia",
+    "index-unit-output-path" : "/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileViewController.o",
+    "llvm-bc" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileViewController.bc",
+    "object" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileViewController.o",
+    "swift-dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileViewController.swiftdeps",
+    "swiftmodule" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/ProfileViewController~partial.swiftmodule"
+  },
+  "/Users/rylanddean/Just Euchre/Just Euchre iOS/RootTabBarController.swift" : {
+    "const-values" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/RootTabBarController.swiftconstvalues",
+    "dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/RootTabBarController.d",
+    "diagnostics" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/RootTabBarController.dia",
+    "index-unit-output-path" : "/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/RootTabBarController.o",
+    "llvm-bc" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/RootTabBarController.bc",
+    "object" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/RootTabBarController.o",
+    "swift-dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/RootTabBarController.swiftdeps",
+    "swiftmodule" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/RootTabBarController~partial.swiftmodule"
+  },
+  "/Users/rylanddean/Just Euchre/Just Euchre iOS/SettingsViewController.swift" : {
+    "const-values" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/SettingsViewController.swiftconstvalues",
+    "dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/SettingsViewController.d",
+    "diagnostics" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/SettingsViewController.dia",
+    "index-unit-output-path" : "/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/SettingsViewController.o",
+    "llvm-bc" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/SettingsViewController.bc",
+    "object" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/SettingsViewController.o",
+    "swift-dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/SettingsViewController.swiftdeps",
+    "swiftmodule" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/SettingsViewController~partial.swiftmodule"
+  },
+  "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/rylanddean/Just Euchre/build/Just Euchre.build/Debug-iphonesimulator/Just Euchre iOS.build/Objects-normal/x86_64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}

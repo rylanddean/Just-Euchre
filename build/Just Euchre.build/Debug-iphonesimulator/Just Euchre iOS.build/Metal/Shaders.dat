@@ -1,0 +1,4 @@
+dependencies: \
+  /Users/rylanddean/Just\ Euchre/Just\ Euchre\ Shared/Shaders.metal \
+  /private/var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.3.7003.10.riAOuR/Metal.xctoolchain/usr/metal/32023/lib/clang/32023.864/include/metal/module.modulemap \
+  /Users/rylanddean/Just\ Euchre/Just\ Euchre\ Shared/ShaderTypes.h
