@@ -72,12 +72,20 @@ final class SettingsViewController: UIViewController {
         contentStack.arrangedSubviews.forEach { contentStack.removeArrangedSubview($0); $0.removeFromSuperview() }
 
         contentStack.addArrangedSubview(sectionTitle("Stats"))
-        let streakRow = SettingsRowView(surface: surface, border: border)
-        let longestStreak = DailyGameStore.longestStreak
-        let streakSubtitle = longestStreak > 0 ? "\(longestStreak) day\(longestStreak == 1 ? "" : "s")" : "No streak yet"
-        streakRow.configure(title: "Longest streak", subtitle: streakSubtitle, icon: "flame.fill", showsChevron: false)
-        streakRow.isUserInteractionEnabled = false
-        contentStack.addArrangedSubview(streakRow)
+
+        let winStreakRow = SettingsRowView(surface: surface, border: border)
+        let longestWin = DailyGameStore.longestStreak
+        let winSubtitle = longestWin > 0 ? "\(longestWin) day\(longestWin == 1 ? "" : "s")" : "No streak yet"
+        winStreakRow.configure(title: "Longest winning streak", subtitle: winSubtitle, icon: "flame.fill", showsChevron: false)
+        winStreakRow.isUserInteractionEnabled = false
+        contentStack.addArrangedSubview(winStreakRow)
+
+        let completedStreakRow = SettingsRowView(surface: surface, border: border)
+        let longestCompleted = DailyGameStore.longestCompletedStreak
+        let completedSubtitle = longestCompleted > 0 ? "\(longestCompleted) day\(longestCompleted == 1 ? "" : "s")" : "No streak yet"
+        completedStreakRow.configure(title: "Longest completed streak", subtitle: completedSubtitle, icon: "checkmark.square.fill", showsChevron: false)
+        completedStreakRow.isUserInteractionEnabled = false
+        contentStack.addArrangedSubview(completedStreakRow)
 
         contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("Gameplay"))
