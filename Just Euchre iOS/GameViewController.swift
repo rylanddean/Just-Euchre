@@ -32,6 +32,8 @@ final class GameViewController: UIViewController {
     private let trickEast = CardView()
     private let trickSouth = CardView()
 
+    private let gameOverLabel = UILabel()
+
     private let actionRow = UIStackView()
     private let handRow = UIStackView()
 
@@ -109,7 +111,7 @@ final class GameViewController: UIViewController {
 
         statusLabel.textColor = theme.mutedText
         statusLabel.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
-        statusLabel.numberOfLines = 2
+        statusLabel.numberOfLines = 1
         statusLabel.textAlignment = .center
 
         trumpBadge.isHidden = true
@@ -314,6 +316,19 @@ final class GameViewController: UIViewController {
         indicatorTopToUpcard = indicatorRow.topAnchor.constraint(equalTo: upcardView.bottomAnchor, constant: 10)
         indicatorTopToContainer = indicatorRow.topAnchor.constraint(equalTo: tableContainer.topAnchor, constant: 14)
         indicatorTopToUpcard?.isActive = true
+
+        gameOverLabel.numberOfLines = 0
+        gameOverLabel.textAlignment = .center
+        gameOverLabel.font = UIFont.systemFont(ofSize: 22, weight: .bold)
+        gameOverLabel.textColor = .white
+        gameOverLabel.isHidden = true
+        gameOverLabel.translatesAutoresizingMaskIntoConstraints = false
+        tableContainer.addSubview(gameOverLabel)
+        NSLayoutConstraint.activate([
+            gameOverLabel.leadingAnchor.constraint(equalTo: tableContainer.leadingAnchor, constant: 24),
+            gameOverLabel.trailingAnchor.constraint(equalTo: tableContainer.trailingAnchor, constant: -24),
+            gameOverLabel.centerYAnchor.constraint(equalTo: tableContainer.centerYAnchor),
+        ])
     }
 
     private func render() {
@@ -344,9 +359,12 @@ final class GameViewController: UIViewController {
             if gameOverNudge == nil {
                 gameOverNudge = OnDeviceNudgeGenerator.nextNudge()
             }
-            statusLabel.text = "\(game.statusText)\n\(gameOverNudge ?? "")"
+            statusLabel.text = game.statusText
+            gameOverLabel.text = gameOverNudge
+            gameOverLabel.isHidden = false
         } else {
             statusLabel.text = game.statusText
+            gameOverLabel.isHidden = true
         }
         recordOutcomeIfNeeded()
 
