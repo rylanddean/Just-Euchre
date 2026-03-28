@@ -10,9 +10,15 @@
 //
 
 import Foundation
+import WidgetKit
 
 enum DailyGameStore {
     static let didChangeNotification = Notification.Name("justeuchre.daily.didChange")
+
+    /// Shared with the widget extension via the App Group.
+    static var sharedDefaults: UserDefaults {
+        UserDefaults(suiteName: "group.Ryland-Dean.Just-Euchre") ?? .standard
+    }
 
     private enum Keys {
         static let startedDay        = "justeuchre.daily.startedDay"       // Date at start-of-day
@@ -32,13 +38,13 @@ enum DailyGameStore {
 
     static func hasStartedToday(now: Date = Date()) -> Bool {
         let today = todayKeyDate(now: now)
-        guard let started = UserDefaults.standard.object(forKey: Keys.startedDay) as? Date else { return false }
+        guard let started = sharedDefaults.object(forKey: Keys.startedDay) as? Date else { return false }
         return Calendar.current.isDate(started, inSameDayAs: today)
     }
 
     static func isCompletedToday(now: Date = Date()) -> Bool {
         let today = todayKeyDate(now: now)
-        guard let completed = UserDefaults.standard.object(forKey: Keys.completedDay) as? Date else { return false }
+        guard let completed = sharedDefaults.object(forKey: Keys.completedDay) as? Date else { return false }
         return Calendar.current.isDate(completed, inSameDayAs: today)
     }
 
@@ -48,7 +54,7 @@ enum DailyGameStore {
 
     static func markStartedToday(now: Date = Date()) {
         let today = todayKeyDate(now: now)
-        UserDefaults.standard.set(today, forKey: Keys.startedDay)
+        sharedDefaults.set(today, forKey: Keys.startedDay)
         NotificationCenter.default.post(name: didChangeNotification, object: nil)
     }
 
@@ -59,7 +65,7 @@ enum DailyGameStore {
         let today = todayKeyDate(now: now)
         if isCompletedToday(now: now) { return }
 
-        let defaults = UserDefaults.standard
+        let defaults = sharedDefaults
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)
 
         // --- Completed-game streak ---
@@ -105,11 +111,12 @@ enum DailyGameStore {
         }
 
         NotificationCenter.default.post(name: didChangeNotification, object: nil)
+        WidgetCenter.shared.reloadTimelines(ofKind: "StreakWidget")
     }
 
     /// Consecutive winning days. Returns 0 if the last win was more than 1 day ago (streak broken by incomplete or loss).
     static var currentWinStreak: Int {
-        let defaults = UserDefaults.standard
+        let defaults = sharedDefaults
         guard let lastWin = defaults.object(forKey: Keys.lastWinDay) as? Date else { return 0 }
         let today = todayKeyDate()
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
@@ -120,7 +127,7 @@ enum DailyGameStore {
 
     /// Consecutive days with any completed game (win or loss). Returns 0 if broken by an incomplete day.
     static var currentCompletedStreak: Int {
-        let defaults = UserDefaults.standard
+        let defaults = sharedDefaults
         guard let lastCompletion = defaults.object(forKey: Keys.lastCompletionDay) as? Date else { return 0 }
         let today = todayKeyDate()
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
@@ -131,23 +138,23 @@ enum DailyGameStore {
 
     /// Longest winning streak ever recorded.
     static var longestStreak: Int {
-        UserDefaults.standard.integer(forKey: Keys.longestWinStreak)
+        sharedDefaults.integer(forKey: Keys.longestWinStreak)
     }
 
     /// Longest completed-game streak ever recorded (wins + losses, no incompletes).
     static var longestCompletedStreak: Int {
-        UserDefaults.standard.integer(forKey: Keys.longestCompletedStreak)
+        sharedDefaults.integer(forKey: Keys.longestCompletedStreak)
     }
 
     static var longestStreakDate: Date? {
-        UserDefaults.standard.object(forKey: Keys.longestWinStreakDate) as? Date
+        sharedDefaults.object(forKey: Keys.longestWinStreakDate) as? Date
     }
 
     // MARK: - Developer utilities
 
     static func debugResetToday(now: Date = Date()) {
         let today = todayKeyDate(now: now)
-        let defaults = UserDefaults.standard
+        let defaults = sharedDefaults
 
         if let started = defaults.object(forKey: Keys.startedDay) as? Date,
            Calendar.current.isDate(started, inSameDayAs: today) {
@@ -166,7 +173,7 @@ enum DailyGameStore {
     }
 
     static func debugResetAll() {
-        let defaults = UserDefaults.standard
+        let defaults = sharedDefaults
         defaults.removeObject(forKey: Keys.startedDay)
         defaults.removeObject(forKey: Keys.completedDay)
         defaults.removeObject(forKey: Keys.lastCompletionDay)

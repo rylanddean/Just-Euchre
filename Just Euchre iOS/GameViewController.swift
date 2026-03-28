@@ -51,6 +51,34 @@ final class GameViewController: UIViewController {
     private let hintPillView = UIView()
     private let hintLabel = UILabel()
 
+    // Card-fly animation tracking. -1 means "not yet initialised" (skip first render).
+    private var previousTrickCount: Int = -1
+    private var pendingPlaySourceRect: CGRect? // tableContainer coords, set before humanPlayCard
+
+    // Trick-sweep animation: tracks which trickOver winner we've already scheduled a sweep for.
+    private var scheduledSweepWinner: Int? = nil
+
+    // Euchre/March banner
+    private let bannerView  = UIView()
+    private let bannerLabel = UILabel()
+    private var lastBannerHandSerial: Int = -1
+
+    // Trump suit flash
+    private let trumpFlashLabel = UILabel()
+    private var lastFlashedTrump: EuchreGame.Card.Suit? = nil
+
+    // Deal-stagger animation: tracks the last hand serial we animated so restoring a saved
+    // game mid-hand never re-plays the deal animation.
+    private var lastSeenHandSerial: Int = 0
+
+    // Score badge bounce: tracks last known scores so we only bounce when a score actually changes.
+    private var lastKnownScores: [Int] = [-1, -1]
+
+    // Upcard flip reveal: tracks which upcard we've already flipped so we only animate once
+    // per deal, and never re-fire on app restore. Flag guards mid-flip render() calls.
+    private var lastFlippedUpcard: EuchreGame.Card? = nil
+    private var upcardFlipInProgress = false
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = theme.background
@@ -66,6 +94,11 @@ final class GameViewController: UIViewController {
         NotificationCenter.default.addObserver(self, selector: #selector(appWillResignActive), name: UIApplication.willResignActiveNotification, object: nil)
 
         restoreIfPossible()
+        lastSeenHandSerial  = game.handSerial // don't stagger cards that were already dealt
+        lastBannerHandSerial = game.handSerial // don't re-fire a banner for a restored handOver
+        lastFlashedTrump    = game.trump       // don't flash trump for a restored mid-hand state
+        lastKnownScores     = game.scores      // don't bounce badges for a restored score
+        lastFlippedUpcard   = game.upcard      // don't flip the upcard for a restored game
         render()
     }
 
@@ -86,6 +119,7 @@ final class GameViewController: UIViewController {
         game.onUpdate = { [weak self] in
             self?.render()
         }
+        lastSeenHandSerial = -1 // ensure the first deal always staggers
 
         game.startNewHand()
     }
@@ -201,6 +235,8 @@ final class GameViewController: UIViewController {
 
         buildHeader()
         buildTable()
+        buildBanner()
+        buildTrumpFlash()
     }
 
     private func buildHeader() {
@@ -371,6 +407,18 @@ final class GameViewController: UIViewController {
             badge.setWinning(index == winningPlayer)
         }
 
+        // Score badge bounce — fire once when a team's score increases at handOver.
+        if case .handOver = game.phase {
+            for team in 0..<2 {
+                let newScore = game.scores[team]
+                if newScore != lastKnownScores[team] {
+                    lastKnownScores[team] = newScore
+                    playerBadges[team].bounce()
+                    playerBadges[team + 2].bounce()
+                }
+            }
+        }
+
         // Status
         if game.winningTeam != nil {
             if gameOverNudge == nil {
@@ -385,12 +433,32 @@ final class GameViewController: UIViewController {
         }
         recordOutcomeIfNeeded()
 
+        // Euchre / March banner — show once per hand when the hand ends.
+        if case .handOver = game.phase, game.handSerial != lastBannerHandSerial {
+            lastBannerHandSerial = game.handSerial
+            if let text = handOutcomeBannerText() {
+                showBanner(text)
+            }
+        }
+
         // Upcard + trump
         if let upcard = game.upcard {
             let showUpcard = game.shouldShowUpcard
-            upcardView.isHidden = !showUpcard
             if showUpcard {
-                upcardView.setCard(upcard, faceDown: false)
+                if upcard != lastFlippedUpcard {
+                    // New upcard this hand — play the flip reveal once.
+                    lastFlippedUpcard = upcard
+                    flipUpcardReveal(upcard)
+                } else {
+                    // Already flipped — just keep it visible. Guard against
+                    // setCard calls while the flip animation is still running.
+                    upcardView.isHidden = false
+                    if !upcardFlipInProgress {
+                        upcardView.setCard(upcard, faceDown: false)
+                    }
+                }
+            } else {
+                upcardView.isHidden = true
             }
 
             indicatorTopToUpcard?.isActive = showUpcard
@@ -404,8 +472,14 @@ final class GameViewController: UIViewController {
         if let trump = game.trump {
             trumpBadge.isHidden = false
             trumpBadge.setText("Trump: \(trump.symbol)")
+            // Flash the suit symbol the first time trump is set this hand.
+            if trump != lastFlashedTrump {
+                lastFlashedTrump = trump
+                flashTrumpSuit(trump)
+            }
         } else {
             trumpBadge.isHidden = true
+            lastFlashedTrump = nil
         }
 
         if let led = game.ledSuitToDisplay {
@@ -417,6 +491,32 @@ final class GameViewController: UIViewController {
         indicatorRow.isHidden = trumpBadge.isHidden && ledBadge.isHidden
 
         // Trick
+        // Detect whether a new card was just played so we can animate it flying onto the table.
+        let newTrickCount = game.currentTrick.count
+        var cardToAnimate: CardView?
+        var animSourceRect: CGRect?
+
+        if previousTrickCount >= 0, newTrickCount == previousTrickCount + 1,
+           let newPlay = game.currentTrick.last {
+            cardToAnimate = trickView(for: newPlay.player)
+            if newPlay.player == 0 {
+                // Human: use the rect we captured just before humanPlayCard was called.
+                animSourceRect = pendingPlaySourceRect
+            } else {
+                // AI: fly from the player's badge in the header.
+                let badge = playerBadges[newPlay.player]
+                animSourceRect = badge.convert(badge.bounds, to: tableContainer)
+            }
+        }
+        pendingPlaySourceRect = nil
+        previousTrickCount = newTrickCount
+
+        // Reset visual state before hiding so the next trick always starts clean
+        // (a sweep may have left alpha=0 / non-identity transforms on the views).
+        [trickNorth, trickEast, trickWest, trickSouth].forEach {
+            $0.alpha = 1
+            $0.transform = .identity
+        }
         trickNorth.isHidden = true
         trickEast.isHidden = true
         trickWest.isHidden = true
@@ -438,8 +538,24 @@ final class GameViewController: UIViewController {
             }
         }
 
+        if let cv = cardToAnimate, let src = animSourceRect {
+            animateCardFly(cv, from: src)
+        }
+
+        // Trick-sweep: schedule cards flying to the winner when trickOver first fires.
+        if let winner = game.trickWinnerPlayer {
+            if scheduledSweepWinner != winner {
+                scheduledSweepWinner = winner
+                scheduleTrickSweep(winner: winner)
+            }
+        } else {
+            scheduledSweepWinner = nil
+        }
+
         // Hand
-        rebuildHand()
+        let isNewDeal = game.handSerial != lastSeenHandSerial
+        if isNewDeal { lastSeenHandSerial = game.handSerial }
+        rebuildHand(animateDeal: isNewDeal)
         rebuildActions()
 
         manageSuggestionTimer()
@@ -457,7 +573,7 @@ final class GameViewController: UIViewController {
         }
     }
 
-    private func rebuildHand() {
+    private func rebuildHand(animateDeal: Bool = false) {
         handRow.arrangedSubviews.forEach { handRow.removeArrangedSubview($0); $0.removeFromSuperview() }
         handCardViews = []
         hintedCardView = nil
@@ -465,7 +581,7 @@ final class GameViewController: UIViewController {
         let hand = game.players[0].hand.sorted(by: { game.sortKey(for: $0) < game.sortKey(for: $1) })
         let selectable = Set(game.selectableCardsForHuman())
 
-        for card in hand {
+        for (index, card) in hand.enumerated() {
             let cardView = CardView()
             cardView.theme = theme
             cardView.setCard(card, faceDown: false)
@@ -477,6 +593,22 @@ final class GameViewController: UIViewController {
             cardView.addTarget(self, action: #selector(didTapHandCard(_:)), for: .touchUpInside)
             handCardViews.append(cardView)
             handRow.addArrangedSubview(cardView)
+
+            if animateDeal {
+                // Start each card below its resting position, invisible.
+                cardView.alpha = 0
+                cardView.transform = CGAffineTransform(translationX: 0, y: 32)
+                UIView.animate(
+                    withDuration: 0.22,
+                    delay: Double(index) * 0.07,
+                    usingSpringWithDamping: 0.78,
+                    initialSpringVelocity: 0.3,
+                    options: []
+                ) {
+                    cardView.alpha = 1
+                    cardView.transform = .identity
+                }
+            }
         }
     }
 
@@ -564,6 +696,10 @@ final class GameViewController: UIViewController {
             return
         }
         cancelSuggestion()
+        // Capture the card view's screen position so we can animate it flying to the table.
+        if let cv = handCardViews.first(where: { $0.card == card }) {
+            pendingPlaySourceRect = cv.convert(cv.bounds, to: tableContainer)
+        }
         game.humanPlayCard(card)
     }
 
@@ -625,6 +761,196 @@ final class GameViewController: UIViewController {
                     view.transform = .identity
                 }
             })
+        }
+    }
+
+    // MARK: - Trump Suit Flash
+
+    private func buildTrumpFlash() {
+        trumpFlashLabel.font = UIFont.systemFont(ofSize: 72, weight: .bold)
+        trumpFlashLabel.textAlignment = .center
+        trumpFlashLabel.alpha = 0
+        trumpFlashLabel.isUserInteractionEnabled = false
+        trumpFlashLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(trumpFlashLabel)
+        NSLayoutConstraint.activate([
+            trumpFlashLabel.centerXAnchor.constraint(equalTo: tableContainer.centerXAnchor),
+            trumpFlashLabel.centerYAnchor.constraint(equalTo: tableContainer.centerYAnchor),
+        ])
+    }
+
+    private func flashTrumpSuit(_ suit: EuchreGame.Card.Suit) {
+        trumpFlashLabel.text = suit.symbol
+        trumpFlashLabel.textColor = suit.isRed ? theme.accentRed : .white
+        trumpFlashLabel.transform = CGAffineTransform(scaleX: 0.4, y: 0.4)
+        trumpFlashLabel.alpha = 0
+
+        UIView.animate(withDuration: 0.14, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8, options: []) {
+            self.trumpFlashLabel.transform = .identity
+            self.trumpFlashLabel.alpha = 1
+        } completion: { _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+                UIView.animate(withDuration: 0.20, delay: 0, options: [.curveEaseIn]) {
+                    self?.trumpFlashLabel.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
+                    self?.trumpFlashLabel.alpha = 0
+                } completion: { _ in
+                    self?.trumpFlashLabel.transform = .identity
+                }
+            }
+        }
+    }
+
+    // MARK: - Euchre / March Banner
+
+    private func buildBanner() {
+        bannerView.backgroundColor = theme.surface
+        bannerView.layer.cornerRadius = 14
+        bannerView.layer.borderWidth = 1
+        bannerView.layer.borderColor = theme.pillBorder.cgColor
+        bannerView.alpha = 0
+        bannerView.isUserInteractionEnabled = false
+        bannerView.translatesAutoresizingMaskIntoConstraints = false
+
+        bannerLabel.font = UIFont.systemFont(ofSize: 28, weight: .bold)
+        bannerLabel.textColor = .white
+        bannerLabel.textAlignment = .center
+        bannerLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        bannerView.addSubview(bannerLabel)
+        view.addSubview(bannerView) // sits on top of tableContainer
+
+        NSLayoutConstraint.activate([
+            bannerLabel.topAnchor.constraint(equalTo: bannerView.topAnchor, constant: 14),
+            bannerLabel.bottomAnchor.constraint(equalTo: bannerView.bottomAnchor, constant: -14),
+            bannerLabel.leadingAnchor.constraint(equalTo: bannerView.leadingAnchor, constant: 24),
+            bannerLabel.trailingAnchor.constraint(equalTo: bannerView.trailingAnchor, constant: -24),
+
+            bannerView.centerXAnchor.constraint(equalTo: tableContainer.centerXAnchor),
+            bannerView.centerYAnchor.constraint(equalTo: tableContainer.centerYAnchor),
+        ])
+    }
+
+    /// Returns the banner text for a special hand outcome, or nil for an ordinary win.
+    private func handOutcomeBannerText() -> String? {
+        guard let makerIndex = game.makerPlayerToDisplay else { return nil }
+        let makerTeam   = makerIndex % 2
+        let makerTricks = game.tricksWonByTeam[makerTeam]
+        if makerTricks < 3  { return "Euchre!" }
+        if makerTricks == 5 { return "March!" }
+        return nil
+    }
+
+    private func showBanner(_ text: String) {
+        bannerLabel.text = text
+        bannerView.transform = CGAffineTransform(scaleX: 0.82, y: 0.82)
+        bannerView.alpha = 0
+
+        UIView.animate(withDuration: 0.18, delay: 0, options: [.curveEaseOut]) {
+            self.bannerView.transform = .identity
+            self.bannerView.alpha = 1
+        } completion: { _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { [weak self] in
+                UIView.animate(withDuration: 0.20, delay: 0, options: [.curveEaseIn]) {
+                    self?.bannerView.alpha = 0
+                }
+            }
+        }
+    }
+
+    // MARK: - Card Animations
+
+    // MARK: Trick sweep
+
+    /// Schedules the trick-sweep animation to fire after a brief pause so players can
+    /// absorb the winner highlight before cards disappear.
+    private func scheduleTrickSweep(winner: Int) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) { [weak self] in
+            guard let self else { return }
+            // Bail if the game has already moved on (e.g. restored state cleared trickOver).
+            guard self.game.trickWinnerPlayer == winner else { return }
+            self.animateTrickSweep(to: winner)
+        }
+    }
+
+    /// Animates all visible trick-card views converging on the winning player's badge,
+    /// shrinking and fading as they go.
+    private func animateTrickSweep(to winner: Int) {
+        guard winner < playerBadges.count else { return }
+
+        let badge = playerBadges[winner]
+        let badgeRect = badge.convert(badge.bounds, to: tableContainer)
+        let destCenter = CGPoint(x: badgeRect.midX, y: badgeRect.midY)
+
+        let visibleViews = [trickNorth, trickWest, trickEast, trickSouth]
+            .filter { !$0.isHidden }
+        guard !visibleViews.isEmpty else { return }
+
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+
+        for cardView in visibleViews {
+            let dx = destCenter.x - cardView.center.x
+            let dy = destCenter.y - cardView.center.y
+
+            UIView.animate(
+                withDuration: 0.32,
+                delay: 0,
+                options: [.curveEaseIn]
+            ) {
+                cardView.transform = CGAffineTransform(translationX: dx, y: dy)
+                    .scaledBy(x: 0.22, y: 0.22)
+                cardView.alpha = 0
+            }
+        }
+    }
+
+    // MARK: Card fly
+
+    /// Flips the upcard from face-down to face-up with a horizontal fold animation.
+    /// Two-phase: compress to scaleX 0 (face-down), swap content, expand back to identity (face-up).
+    private func flipUpcardReveal(_ card: EuchreGame.Card) {
+        upcardFlipInProgress = true
+        upcardView.setCard(card, faceDown: true)
+        upcardView.transform = .identity
+        upcardView.isHidden = false
+
+        UIView.animate(withDuration: 0.13, delay: 0, options: [.curveEaseIn]) {
+            self.upcardView.transform = CGAffineTransform(scaleX: 0.01, y: 1.0)
+        } completion: { _ in
+            self.upcardView.setCard(card, faceDown: false)
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            UIView.animate(withDuration: 0.17, delay: 0,
+                           usingSpringWithDamping: 0.70, initialSpringVelocity: 0.5,
+                           options: []) {
+                self.upcardView.transform = .identity
+            } completion: { _ in
+                self.upcardFlipInProgress = false
+            }
+        }
+    }
+
+    /// Animates `cardView` flying from `sourceRect` (in `tableContainer` coordinates) to its
+    /// AutoLayout-determined resting position. Stays well under the 300 ms brand guideline.
+    private func animateCardFly(_ cardView: CardView, from sourceRect: CGRect) {
+        // The trick card views have fixed constraints, so their centers are valid immediately.
+        let destCenter = cardView.center // already in tableContainer coords
+        let srcCenter  = CGPoint(x: sourceRect.midX, y: sourceRect.midY)
+
+        let dx = srcCenter.x - destCenter.x
+        let dy = srcCenter.y - destCenter.y
+
+        // Snap to the source position (invisible so there's no pop).
+        cardView.alpha     = 0
+        cardView.transform = CGAffineTransform(translationX: dx, y: dy).scaledBy(x: 0.88, y: 0.88)
+
+        UIView.animate(
+            withDuration: 0.26,
+            delay: 0,
+            usingSpringWithDamping: 0.72,
+            initialSpringVelocity: 0.4,
+            options: [.curveEaseOut]
+        ) {
+            cardView.transform = .identity
+            cardView.alpha     = 1
         }
     }
 
@@ -891,6 +1217,19 @@ private final class PlayerBadgeView: UIView {
 
     func setScore(_ score: Int) {
         scoreLabel.text = "\(score)"
+    }
+
+    func bounce() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        UIView.animate(withDuration: 0.10, delay: 0, options: [.curveEaseOut]) {
+            self.transform = CGAffineTransform(scaleX: 1.14, y: 1.14)
+        } completion: { _ in
+            UIView.animate(withDuration: 0.20, delay: 0,
+                           usingSpringWithDamping: 0.45, initialSpringVelocity: 0.6,
+                           options: []) {
+                self.transform = .identity
+            }
+        }
     }
 
     func setTricks(_ tricks: Int, visible: Bool) {
@@ -1300,7 +1639,7 @@ private final class EuchreGame {
     private var didScheduleAI = false
     private var didScheduleNextHand = false
     private var didScheduleTrickAdvance = false
-    private var handSerial: Int = 0
+    private(set) var handSerial: Int = 0
 
     var aloneToggleOn: Bool = false
     var playerNames: [String] = ["You", "W", "N", "E"]

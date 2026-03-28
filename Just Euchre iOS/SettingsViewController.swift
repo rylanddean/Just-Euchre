@@ -6,6 +6,7 @@
 import StoreKit
 import UIKit
 import UserNotifications
+import WidgetKit
 
 final class SettingsViewController: UIViewController {
 
@@ -324,6 +325,10 @@ final class SettingsViewController: UIViewController {
             preferredStyle: .actionSheet
         )
 
+        sheet.addAction(UIAlertAction(title: "Populate 5 days of test data", style: .default) { [weak self] _ in
+            self?.populateTestData()
+        })
+
         sheet.addAction(UIAlertAction(title: "Reset today’s game", style: .destructive) { [weak self] _ in
             GameStateStore.clear()
             DailyGameStore.debugResetToday()
@@ -339,6 +344,41 @@ final class SettingsViewController: UIViewController {
 
         sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         present(sheet, animated: true)
+    }
+
+    private func populateTestData() {
+        GameStateStore.clear()
+        GameHistoryStore.clear()
+        DailyGameStore.debugResetAll()
+
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+
+        // 5 days of pre-set games: win streak broken on day 3, then rebuilt
+        // Result: completedStreak = 5, winStreak = 2
+        let games: [(daysAgo: Int, your: Int, their: Int)] = [
+            (4, 10, 6),  // Win
+            (3, 10, 4),  // Win
+            (2,  6, 10), // Loss — breaks win streak
+            (1, 10, 8),  // Win
+            (0, 10, 2),  // Win
+        ]
+
+        for game in games {
+            guard let gameDate = cal.date(byAdding: .day, value: -game.daysAgo, to: today) else { continue }
+            DailyGameStore.markStartedToday(now: gameDate)
+            DailyGameStore.markCompletedToday(didWin: game.your > game.their, now: gameDate)
+            GameHistoryStore.addResult(yourScore: game.your, theirScore: game.their, date: gameDate)
+        }
+
+        // Diagnostic: read values back from sharedDefaults to confirm data was written
+        let win = DailyGameStore.currentWinStreak
+        let completed = DailyGameStore.currentCompletedStreak
+        let groupOK = UserDefaults(suiteName: "group.Ryland-Dean.Just-Euchre") != nil
+
+        WidgetCenter.shared.reloadAllTimelines()
+
+        showToast("Done. win=\(win) completed=\(completed) group=\(groupOK)")
     }
 }
 
