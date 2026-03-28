@@ -71,6 +71,11 @@ final class GameViewController: UIViewController {
     // game mid-hand never re-plays the deal animation.
     private var lastSeenHandSerial: Int = 0
 
+    // Upcard flip reveal: tracks which upcard we've already flipped so we only animate once
+    // per deal, and never re-fire on app restore. Flag guards mid-flip render() calls.
+    private var lastFlippedUpcard: EuchreGame.Card? = nil
+    private var upcardFlipInProgress = false
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = theme.background
@@ -89,6 +94,7 @@ final class GameViewController: UIViewController {
         lastSeenHandSerial  = game.handSerial // don't stagger cards that were already dealt
         lastBannerHandSerial = game.handSerial // don't re-fire a banner for a restored handOver
         lastFlashedTrump    = game.trump       // don't flash trump for a restored mid-hand state
+        lastFlippedUpcard   = game.upcard      // don't flip the upcard for a restored game
         render()
     }
 
@@ -422,9 +428,21 @@ final class GameViewController: UIViewController {
         // Upcard + trump
         if let upcard = game.upcard {
             let showUpcard = game.shouldShowUpcard
-            upcardView.isHidden = !showUpcard
             if showUpcard {
-                upcardView.setCard(upcard, faceDown: false)
+                if upcard != lastFlippedUpcard {
+                    // New upcard this hand — play the flip reveal once.
+                    lastFlippedUpcard = upcard
+                    flipUpcardReveal(upcard)
+                } else {
+                    // Already flipped — just keep it visible. Guard against
+                    // setCard calls while the flip animation is still running.
+                    upcardView.isHidden = false
+                    if !upcardFlipInProgress {
+                        upcardView.setCard(upcard, faceDown: false)
+                    }
+                }
+            } else {
+                upcardView.isHidden = true
             }
 
             indicatorTopToUpcard?.isActive = showUpcard
@@ -870,6 +888,29 @@ final class GameViewController: UIViewController {
     }
 
     // MARK: Card fly
+
+    /// Flips the upcard from face-down to face-up with a horizontal fold animation.
+    /// Two-phase: compress to scaleX 0 (face-down), swap content, expand back to identity (face-up).
+    private func flipUpcardReveal(_ card: EuchreGame.Card) {
+        upcardFlipInProgress = true
+        upcardView.setCard(card, faceDown: true)
+        upcardView.transform = .identity
+        upcardView.isHidden = false
+
+        UIView.animate(withDuration: 0.13, delay: 0, options: [.curveEaseIn]) {
+            self.upcardView.transform = CGAffineTransform(scaleX: 0.01, y: 1.0)
+        } completion: { _ in
+            self.upcardView.setCard(card, faceDown: false)
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            UIView.animate(withDuration: 0.17, delay: 0,
+                           usingSpringWithDamping: 0.70, initialSpringVelocity: 0.5,
+                           options: []) {
+                self.upcardView.transform = .identity
+            } completion: { _ in
+                self.upcardFlipInProgress = false
+            }
+        }
+    }
 
     /// Animates `cardView` flying from `sourceRect` (in `tableContainer` coordinates) to its
     /// AutoLayout-determined resting position. Stays well under the 300 ms brand guideline.
