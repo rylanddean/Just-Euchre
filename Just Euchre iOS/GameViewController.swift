@@ -71,6 +71,9 @@ final class GameViewController: UIViewController {
     // game mid-hand never re-plays the deal animation.
     private var lastSeenHandSerial: Int = 0
 
+    // Score badge bounce: tracks last known scores so we only bounce when a score actually changes.
+    private var lastKnownScores: [Int] = [-1, -1]
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = theme.background
@@ -89,6 +92,7 @@ final class GameViewController: UIViewController {
         lastSeenHandSerial  = game.handSerial // don't stagger cards that were already dealt
         lastBannerHandSerial = game.handSerial // don't re-fire a banner for a restored handOver
         lastFlashedTrump    = game.trump       // don't flash trump for a restored mid-hand state
+        lastKnownScores     = game.scores      // don't bounce badges for a restored score
         render()
     }
 
@@ -395,6 +399,18 @@ final class GameViewController: UIViewController {
             badge.setActive(game.isPlayerActive(index))
             badge.setTurn(index == game.currentTurnPlayer)
             badge.setWinning(index == winningPlayer)
+        }
+
+        // Score badge bounce — fire once when a team's score increases at handOver.
+        if case .handOver = game.phase {
+            for team in 0..<2 {
+                let newScore = game.scores[team]
+                if newScore != lastKnownScores[team] {
+                    lastKnownScores[team] = newScore
+                    playerBadges[team].bounce()
+                    playerBadges[team + 2].bounce()
+                }
+            }
         }
 
         // Status
@@ -1160,6 +1176,19 @@ private final class PlayerBadgeView: UIView {
 
     func setScore(_ score: Int) {
         scoreLabel.text = "\(score)"
+    }
+
+    func bounce() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        UIView.animate(withDuration: 0.10, delay: 0, options: [.curveEaseOut]) {
+            self.transform = CGAffineTransform(scaleX: 1.14, y: 1.14)
+        } completion: { _ in
+            UIView.animate(withDuration: 0.20, delay: 0,
+                           usingSpringWithDamping: 0.45, initialSpringVelocity: 0.6,
+                           options: []) {
+                self.transform = .identity
+            }
+        }
     }
 
     func setTricks(_ tricks: Int, visible: Bool) {
