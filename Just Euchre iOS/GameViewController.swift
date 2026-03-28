@@ -58,6 +58,10 @@ final class GameViewController: UIViewController {
     // Trick-sweep animation: tracks which trickOver winner we've already scheduled a sweep for.
     private var scheduledSweepWinner: Int? = nil
 
+    // Deal-stagger animation: tracks the last hand serial we animated so restoring a saved
+    // game mid-hand never re-plays the deal animation.
+    private var lastSeenHandSerial: Int = 0
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = theme.background
@@ -73,6 +77,7 @@ final class GameViewController: UIViewController {
         NotificationCenter.default.addObserver(self, selector: #selector(appWillResignActive), name: UIApplication.willResignActiveNotification, object: nil)
 
         restoreIfPossible()
+        lastSeenHandSerial = game.handSerial // don't stagger cards that were already dealt
         render()
     }
 
@@ -93,6 +98,7 @@ final class GameViewController: UIViewController {
         game.onUpdate = { [weak self] in
             self?.render()
         }
+        lastSeenHandSerial = -1 // ensure the first deal always staggers
 
         game.startNewHand()
     }
@@ -486,7 +492,9 @@ final class GameViewController: UIViewController {
         }
 
         // Hand
-        rebuildHand()
+        let isNewDeal = game.handSerial != lastSeenHandSerial
+        if isNewDeal { lastSeenHandSerial = game.handSerial }
+        rebuildHand(animateDeal: isNewDeal)
         rebuildActions()
 
         manageSuggestionTimer()
@@ -504,7 +512,7 @@ final class GameViewController: UIViewController {
         }
     }
 
-    private func rebuildHand() {
+    private func rebuildHand(animateDeal: Bool = false) {
         handRow.arrangedSubviews.forEach { handRow.removeArrangedSubview($0); $0.removeFromSuperview() }
         handCardViews = []
         hintedCardView = nil
@@ -512,7 +520,7 @@ final class GameViewController: UIViewController {
         let hand = game.players[0].hand.sorted(by: { game.sortKey(for: $0) < game.sortKey(for: $1) })
         let selectable = Set(game.selectableCardsForHuman())
 
-        for card in hand {
+        for (index, card) in hand.enumerated() {
             let cardView = CardView()
             cardView.theme = theme
             cardView.setCard(card, faceDown: false)
@@ -524,6 +532,22 @@ final class GameViewController: UIViewController {
             cardView.addTarget(self, action: #selector(didTapHandCard(_:)), for: .touchUpInside)
             handCardViews.append(cardView)
             handRow.addArrangedSubview(cardView)
+
+            if animateDeal {
+                // Start each card below its resting position, invisible.
+                cardView.alpha = 0
+                cardView.transform = CGAffineTransform(translationX: 0, y: 32)
+                UIView.animate(
+                    withDuration: 0.22,
+                    delay: Double(index) * 0.07,
+                    usingSpringWithDamping: 0.78,
+                    initialSpringVelocity: 0.3,
+                    options: []
+                ) {
+                    cardView.alpha = 1
+                    cardView.transform = .identity
+                }
+            }
         }
     }
 
@@ -1425,7 +1449,7 @@ private final class EuchreGame {
     private var didScheduleAI = false
     private var didScheduleNextHand = false
     private var didScheduleTrickAdvance = false
-    private var handSerial: Int = 0
+    private(set) var handSerial: Int = 0
 
     var aloneToggleOn: Bool = false
     var playerNames: [String] = ["You", "W", "N", "E"]
