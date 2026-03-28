@@ -55,6 +55,9 @@ final class GameViewController: UIViewController {
     private var previousTrickCount: Int = -1
     private var pendingPlaySourceRect: CGRect? // tableContainer coords, set before humanPlayCard
 
+    // Trick-sweep animation: tracks which trickOver winner we've already scheduled a sweep for.
+    private var scheduledSweepWinner: Int? = nil
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = theme.background
@@ -441,6 +444,12 @@ final class GameViewController: UIViewController {
         pendingPlaySourceRect = nil
         previousTrickCount = newTrickCount
 
+        // Reset visual state before hiding so the next trick always starts clean
+        // (a sweep may have left alpha=0 / non-identity transforms on the views).
+        [trickNorth, trickEast, trickWest, trickSouth].forEach {
+            $0.alpha = 1
+            $0.transform = .identity
+        }
         trickNorth.isHidden = true
         trickEast.isHidden = true
         trickWest.isHidden = true
@@ -464,6 +473,16 @@ final class GameViewController: UIViewController {
 
         if let cv = cardToAnimate, let src = animSourceRect {
             animateCardFly(cv, from: src)
+        }
+
+        // Trick-sweep: schedule cards flying to the winner when trickOver first fires.
+        if let winner = game.trickWinnerPlayer {
+            if scheduledSweepWinner != winner {
+                scheduledSweepWinner = winner
+                scheduleTrickSweep(winner: winner)
+            }
+        } else {
+            scheduledSweepWinner = nil
         }
 
         // Hand
@@ -660,7 +679,53 @@ final class GameViewController: UIViewController {
         }
     }
 
-    // MARK: - Card-fly Animation
+    // MARK: - Card Animations
+
+    // MARK: Trick sweep
+
+    /// Schedules the trick-sweep animation to fire after a brief pause so players can
+    /// absorb the winner highlight before cards disappear.
+    private func scheduleTrickSweep(winner: Int) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) { [weak self] in
+            guard let self else { return }
+            // Bail if the game has already moved on (e.g. restored state cleared trickOver).
+            guard self.game.trickWinnerPlayer == winner else { return }
+            self.animateTrickSweep(to: winner)
+        }
+    }
+
+    /// Animates all visible trick-card views converging on the winning player's badge,
+    /// shrinking and fading as they go.
+    private func animateTrickSweep(to winner: Int) {
+        guard winner < playerBadges.count else { return }
+
+        let badge = playerBadges[winner]
+        let badgeRect = badge.convert(badge.bounds, to: tableContainer)
+        let destCenter = CGPoint(x: badgeRect.midX, y: badgeRect.midY)
+
+        let visibleViews = [trickNorth, trickWest, trickEast, trickSouth]
+            .filter { !$0.isHidden }
+        guard !visibleViews.isEmpty else { return }
+
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+
+        for cardView in visibleViews {
+            let dx = destCenter.x - cardView.center.x
+            let dy = destCenter.y - cardView.center.y
+
+            UIView.animate(
+                withDuration: 0.32,
+                delay: 0,
+                options: [.curveEaseIn]
+            ) {
+                cardView.transform = CGAffineTransform(translationX: dx, y: dy)
+                    .scaledBy(x: 0.22, y: 0.22)
+                cardView.alpha = 0
+            }
+        }
+    }
+
+    // MARK: Card fly
 
     /// Animates `cardView` flying from `sourceRect` (in `tableContainer` coordinates) to its
     /// AutoLayout-determined resting position. Stays well under the 300 ms brand guideline.
