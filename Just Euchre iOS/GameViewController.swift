@@ -63,6 +63,10 @@ final class GameViewController: UIViewController {
     private let bannerLabel = UILabel()
     private var lastBannerHandSerial: Int = -1
 
+    // Trump suit flash
+    private let trumpFlashLabel = UILabel()
+    private var lastFlashedTrump: EuchreGame.Card.Suit? = nil
+
     // Deal-stagger animation: tracks the last hand serial we animated so restoring a saved
     // game mid-hand never re-plays the deal animation.
     private var lastSeenHandSerial: Int = 0
@@ -84,6 +88,7 @@ final class GameViewController: UIViewController {
         restoreIfPossible()
         lastSeenHandSerial  = game.handSerial // don't stagger cards that were already dealt
         lastBannerHandSerial = game.handSerial // don't re-fire a banner for a restored handOver
+        lastFlashedTrump    = game.trump       // don't flash trump for a restored mid-hand state
         render()
     }
 
@@ -221,6 +226,7 @@ final class GameViewController: UIViewController {
         buildHeader()
         buildTable()
         buildBanner()
+        buildTrumpFlash()
     }
 
     private func buildHeader() {
@@ -432,8 +438,14 @@ final class GameViewController: UIViewController {
         if let trump = game.trump {
             trumpBadge.isHidden = false
             trumpBadge.setText("Trump: \(trump.symbol)")
+            // Flash the suit symbol the first time trump is set this hand.
+            if trump != lastFlashedTrump {
+                lastFlashedTrump = trump
+                flashTrumpSuit(trump)
+            }
         } else {
             trumpBadge.isHidden = true
+            lastFlashedTrump = nil
         }
 
         if let led = game.ledSuitToDisplay {
@@ -715,6 +727,42 @@ final class GameViewController: UIViewController {
                     view.transform = .identity
                 }
             })
+        }
+    }
+
+    // MARK: - Trump Suit Flash
+
+    private func buildTrumpFlash() {
+        trumpFlashLabel.font = UIFont.systemFont(ofSize: 72, weight: .bold)
+        trumpFlashLabel.textAlignment = .center
+        trumpFlashLabel.alpha = 0
+        trumpFlashLabel.isUserInteractionEnabled = false
+        trumpFlashLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(trumpFlashLabel)
+        NSLayoutConstraint.activate([
+            trumpFlashLabel.centerXAnchor.constraint(equalTo: tableContainer.centerXAnchor),
+            trumpFlashLabel.centerYAnchor.constraint(equalTo: tableContainer.centerYAnchor),
+        ])
+    }
+
+    private func flashTrumpSuit(_ suit: EuchreGame.Card.Suit) {
+        trumpFlashLabel.text = suit.symbol
+        trumpFlashLabel.textColor = suit.isRed ? theme.accentRed : .white
+        trumpFlashLabel.transform = CGAffineTransform(scaleX: 0.4, y: 0.4)
+        trumpFlashLabel.alpha = 0
+
+        UIView.animate(withDuration: 0.14, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8, options: []) {
+            self.trumpFlashLabel.transform = .identity
+            self.trumpFlashLabel.alpha = 1
+        } completion: { _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+                UIView.animate(withDuration: 0.20, delay: 0, options: [.curveEaseIn]) {
+                    self?.trumpFlashLabel.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
+                    self?.trumpFlashLabel.alpha = 0
+                } completion: { _ in
+                    self?.trumpFlashLabel.transform = .identity
+                }
+            }
         }
     }
 
