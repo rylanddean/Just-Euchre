@@ -51,6 +51,10 @@ final class GameViewController: UIViewController {
     private let hintPillView = UIView()
     private let hintLabel = UILabel()
 
+    // Card-fly animation tracking. -1 means "not yet initialised" (skip first render).
+    private var previousTrickCount: Int = -1
+    private var pendingPlaySourceRect: CGRect? // tableContainer coords, set before humanPlayCard
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = theme.background
@@ -417,6 +421,26 @@ final class GameViewController: UIViewController {
         indicatorRow.isHidden = trumpBadge.isHidden && ledBadge.isHidden
 
         // Trick
+        // Detect whether a new card was just played so we can animate it flying onto the table.
+        let newTrickCount = game.currentTrick.count
+        var cardToAnimate: CardView?
+        var animSourceRect: CGRect?
+
+        if previousTrickCount >= 0, newTrickCount == previousTrickCount + 1,
+           let newPlay = game.currentTrick.last {
+            cardToAnimate = trickView(for: newPlay.player)
+            if newPlay.player == 0 {
+                // Human: use the rect we captured just before humanPlayCard was called.
+                animSourceRect = pendingPlaySourceRect
+            } else {
+                // AI: fly from the player's badge in the header.
+                let badge = playerBadges[newPlay.player]
+                animSourceRect = badge.convert(badge.bounds, to: tableContainer)
+            }
+        }
+        pendingPlaySourceRect = nil
+        previousTrickCount = newTrickCount
+
         trickNorth.isHidden = true
         trickEast.isHidden = true
         trickWest.isHidden = true
@@ -436,6 +460,10 @@ final class GameViewController: UIViewController {
             if let lead = game.leadPlayToDisplay, lead.player == play.player, lead.card == play.card {
                 view.isLeadHighlighted = true
             }
+        }
+
+        if let cv = cardToAnimate, let src = animSourceRect {
+            animateCardFly(cv, from: src)
         }
 
         // Hand
@@ -564,6 +592,10 @@ final class GameViewController: UIViewController {
             return
         }
         cancelSuggestion()
+        // Capture the card view's screen position so we can animate it flying to the table.
+        if let cv = handCardViews.first(where: { $0.card == card }) {
+            pendingPlaySourceRect = cv.convert(cv.bounds, to: tableContainer)
+        }
         game.humanPlayCard(card)
     }
 
@@ -625,6 +657,34 @@ final class GameViewController: UIViewController {
                     view.transform = .identity
                 }
             })
+        }
+    }
+
+    // MARK: - Card-fly Animation
+
+    /// Animates `cardView` flying from `sourceRect` (in `tableContainer` coordinates) to its
+    /// AutoLayout-determined resting position. Stays well under the 300 ms brand guideline.
+    private func animateCardFly(_ cardView: CardView, from sourceRect: CGRect) {
+        // The trick card views have fixed constraints, so their centers are valid immediately.
+        let destCenter = cardView.center // already in tableContainer coords
+        let srcCenter  = CGPoint(x: sourceRect.midX, y: sourceRect.midY)
+
+        let dx = srcCenter.x - destCenter.x
+        let dy = srcCenter.y - destCenter.y
+
+        // Snap to the source position (invisible so there's no pop).
+        cardView.alpha     = 0
+        cardView.transform = CGAffineTransform(translationX: dx, y: dy).scaledBy(x: 0.88, y: 0.88)
+
+        UIView.animate(
+            withDuration: 0.26,
+            delay: 0,
+            usingSpringWithDamping: 0.72,
+            initialSpringVelocity: 0.4,
+            options: [.curveEaseOut]
+        ) {
+            cardView.transform = .identity
+            cardView.alpha     = 1
         }
     }
 
