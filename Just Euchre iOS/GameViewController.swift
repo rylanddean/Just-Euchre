@@ -58,6 +58,11 @@ final class GameViewController: UIViewController {
     // Trick-sweep animation: tracks which trickOver winner we've already scheduled a sweep for.
     private var scheduledSweepWinner: Int? = nil
 
+    // Euchre/March banner
+    private let bannerView  = UIView()
+    private let bannerLabel = UILabel()
+    private var lastBannerHandSerial: Int = -1
+
     // Deal-stagger animation: tracks the last hand serial we animated so restoring a saved
     // game mid-hand never re-plays the deal animation.
     private var lastSeenHandSerial: Int = 0
@@ -77,7 +82,8 @@ final class GameViewController: UIViewController {
         NotificationCenter.default.addObserver(self, selector: #selector(appWillResignActive), name: UIApplication.willResignActiveNotification, object: nil)
 
         restoreIfPossible()
-        lastSeenHandSerial = game.handSerial // don't stagger cards that were already dealt
+        lastSeenHandSerial  = game.handSerial // don't stagger cards that were already dealt
+        lastBannerHandSerial = game.handSerial // don't re-fire a banner for a restored handOver
         render()
     }
 
@@ -214,6 +220,7 @@ final class GameViewController: UIViewController {
 
         buildHeader()
         buildTable()
+        buildBanner()
     }
 
     private func buildHeader() {
@@ -397,6 +404,14 @@ final class GameViewController: UIViewController {
             gameOverLabel.isHidden = true
         }
         recordOutcomeIfNeeded()
+
+        // Euchre / March banner — show once per hand when the hand ends.
+        if case .handOver = game.phase, game.handSerial != lastBannerHandSerial {
+            lastBannerHandSerial = game.handSerial
+            if let text = handOutcomeBannerText() {
+                showBanner(text)
+            }
+        }
 
         // Upcard + trump
         if let upcard = game.upcard {
@@ -700,6 +715,63 @@ final class GameViewController: UIViewController {
                     view.transform = .identity
                 }
             })
+        }
+    }
+
+    // MARK: - Euchre / March Banner
+
+    private func buildBanner() {
+        bannerView.backgroundColor = theme.surface
+        bannerView.layer.cornerRadius = 14
+        bannerView.layer.borderWidth = 1
+        bannerView.layer.borderColor = theme.pillBorder.cgColor
+        bannerView.alpha = 0
+        bannerView.isUserInteractionEnabled = false
+        bannerView.translatesAutoresizingMaskIntoConstraints = false
+
+        bannerLabel.font = UIFont.systemFont(ofSize: 28, weight: .bold)
+        bannerLabel.textColor = .white
+        bannerLabel.textAlignment = .center
+        bannerLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        bannerView.addSubview(bannerLabel)
+        view.addSubview(bannerView) // sits on top of tableContainer
+
+        NSLayoutConstraint.activate([
+            bannerLabel.topAnchor.constraint(equalTo: bannerView.topAnchor, constant: 14),
+            bannerLabel.bottomAnchor.constraint(equalTo: bannerView.bottomAnchor, constant: -14),
+            bannerLabel.leadingAnchor.constraint(equalTo: bannerView.leadingAnchor, constant: 24),
+            bannerLabel.trailingAnchor.constraint(equalTo: bannerView.trailingAnchor, constant: -24),
+
+            bannerView.centerXAnchor.constraint(equalTo: tableContainer.centerXAnchor),
+            bannerView.centerYAnchor.constraint(equalTo: tableContainer.centerYAnchor),
+        ])
+    }
+
+    /// Returns the banner text for a special hand outcome, or nil for an ordinary win.
+    private func handOutcomeBannerText() -> String? {
+        guard let makerIndex = game.makerPlayerToDisplay else { return nil }
+        let makerTeam   = makerIndex % 2
+        let makerTricks = game.tricksWonByTeam[makerTeam]
+        if makerTricks < 3  { return "Euchre!" }
+        if makerTricks == 5 { return "March!" }
+        return nil
+    }
+
+    private func showBanner(_ text: String) {
+        bannerLabel.text = text
+        bannerView.transform = CGAffineTransform(scaleX: 0.82, y: 0.82)
+        bannerView.alpha = 0
+
+        UIView.animate(withDuration: 0.18, delay: 0, options: [.curveEaseOut]) {
+            self.bannerView.transform = .identity
+            self.bannerView.alpha = 1
+        } completion: { _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { [weak self] in
+                UIView.animate(withDuration: 0.20, delay: 0, options: [.curveEaseIn]) {
+                    self?.bannerView.alpha = 0
+                }
+            }
         }
     }
 
