@@ -2103,6 +2103,14 @@ private final class EuchreGame {
     }
 
     func availableHumanButtons() -> [HumanButton] {
+        // handOver is not gated by currentTurnPlayer — there's no active turn.
+        if case .handOver = phase {
+            if winningTeam != nil {
+                return [HumanButton(title: "New Game", kind: .newGame)]
+            }
+            return [HumanButton(title: "Next Hand", kind: .newHand)]
+        }
+
         guard currentTurnPlayer == 0 else { return [] }
 
         switch phase {
@@ -2121,11 +2129,6 @@ private final class EuchreGame {
             return buttons
         case .dealerDiscard:
             return [HumanButton(title: "Auto Discard", kind: .autoDiscard)]
-        case .handOver:
-            if winningTeam != nil {
-                return [HumanButton(title: "New Game", kind: .newGame)]
-            }
-            return [HumanButton(title: "Next Hand", kind: .newHand)]
         default:
             return []
         }
