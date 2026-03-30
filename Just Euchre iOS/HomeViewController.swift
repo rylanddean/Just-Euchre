@@ -3,6 +3,7 @@
 //  Just Euchre iOS
 //
 
+import GameKit
 import UIKit
 
 final class HomeViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
@@ -44,6 +45,7 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
 
         NotificationCenter.default.addObserver(self, selector: #selector(historyDidChange), name: GameHistoryStore.didChangeNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(dailyDidChange), name: DailyGameStore.didChangeNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(gameCenterAuthDidChange), name: GameCenterManager.authDidChangeNotification, object: nil)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -51,6 +53,17 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
         primaryCard.resetConfirmation()
         reloadHistory()
         applyDailyState()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        GKAccessPoint.shared.location = .topLeading
+        GKAccessPoint.shared.isActive = GameCenterManager.shared.isAuthenticated
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        GKAccessPoint.shared.isActive = false
     }
 
     private func buildUI() {
@@ -218,6 +231,10 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
 
     @objc private func historyDidChange() {
         reloadHistory()
+    }
+
+    @objc private func gameCenterAuthDidChange() {
+        GKAccessPoint.shared.isActive = GameCenterManager.shared.isAuthenticated && isViewLoaded && view.window != nil
     }
 
     private func reloadHistory() {

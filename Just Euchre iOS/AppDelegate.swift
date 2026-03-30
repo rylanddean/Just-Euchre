@@ -5,6 +5,7 @@
 //  Created by Ryland Dean on 2026-03-26.
 //
 
+import GameKit
 import UIKit
 
 @main
@@ -26,6 +27,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         DailyNotificationScheduler.topUpIfNeeded()
+        GameCenterManager.shared.authenticate(from: window?.rootViewController)
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
