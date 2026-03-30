@@ -51,6 +51,7 @@ final class GameViewController: UIViewController {
     private var needsPartnerIntro = false
     private let partnerBubble = PartnerChatBubbleView()
     private var partnerBubbleTimer: Timer?
+    private var isPartnerTalking = false
     // Trigger deduplication: track last hand serial and scores we fired dialog for
     private var lastDialogHandSerial = -1
     private var lastDialogScores: [Int] = [-1, -1]
@@ -757,6 +758,10 @@ final class GameViewController: UIViewController {
     private func rebuildActions() {
         actionRow.arrangedSubviews.forEach { actionRow.removeArrangedSubview($0); $0.removeFromSuperview() }
 
+        // While the partner is speaking, hide action buttons so the player
+        // naturally pauses to read the dialog before proceeding.
+        if isPartnerTalking { return }
+
         if game.isAwaitingHumanDiscard {
             let discard = makePillButton(title: "Discard")
             let canDiscard = (selectedDiscardCard != nil)
@@ -987,6 +992,11 @@ final class GameViewController: UIViewController {
             self.positionPartnerBubble(text: text)
             self.view.bringSubviewToFront(self.partnerBubble)
             self.partnerBubble.transform = CGAffineTransform(scaleX: 0.85, y: 0.85).translatedBy(x: 0, y: 6)
+
+            // Hide action buttons while partner speaks so the player naturally pauses
+            self.isPartnerTalking = true
+            self.rebuildActions()
+
             UIView.animate(
                 withDuration: 0.24,
                 delay: 0,
@@ -997,12 +1007,15 @@ final class GameViewController: UIViewController {
                 self.partnerBubble.alpha = 1
                 self.partnerBubble.transform = .identity
             }
-            // ~0.05s per character, clamped between 3.5s and 7s
-            let readTime = min(max(Double(text.count) * 0.05, 3.5), 7.0)
+            // ~0.055s per character, clamped between 3.5s and 8s (longer lines linger longer)
+            let readTime = min(max(Double(text.count) * 0.055, 3.5), 8.0)
             self.partnerBubbleTimer = Timer.scheduledTimer(withTimeInterval: readTime, repeats: false) { [weak self] _ in
                 UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseIn]) {
                     self?.partnerBubble.alpha = 0
                 }
+                // Restore action buttons once bubble fades
+                self?.isPartnerTalking = false
+                self?.rebuildActions()
             }
         }
 
@@ -1017,6 +1030,8 @@ final class GameViewController: UIViewController {
         partnerBubbleTimer?.invalidate()
         partnerBubbleTimer = nil
         partnerBubble.alpha = 0
+        isPartnerTalking = false
+        rebuildActions()
     }
 
     // MARK: - Euchre / March Banner
