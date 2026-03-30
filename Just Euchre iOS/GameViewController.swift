@@ -46,6 +46,18 @@ final class GameViewController: UIViewController {
     private var gameOverNudge: String?
     private var hasInitializedGame = false
 
+    // Partner persona + table talk
+    private var partnerPersona: PartnerPersona?
+    private var needsPartnerIntro = false
+    private let partnerBubble = UIView()
+    private let partnerBubbleLabel = UILabel()
+    private var partnerBubbleTimer: Timer?
+    // Trigger deduplication: track last hand serial and scores we fired dialog for
+    private var lastDialogHandSerial = -1
+    private var lastDialogScores: [Int] = [-1, -1]
+    private var lastDialogWinningTeam: Int? = nil
+    private var idleDialogTrickCount = 0  // how many tricks since last idle comment
+
     private var suggestionTimer: Timer?
     private weak var hintedCardView: CardView?
     private let hintPillView = UIView()
@@ -102,6 +114,11 @@ final class GameViewController: UIViewController {
         render()
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        presentPartnerIntroIfNeeded()
+    }
+
     func startNewGameFromMenu() {
         loadViewIfNeeded()
 
@@ -113,15 +130,50 @@ final class GameViewController: UIViewController {
         gameOverNudge = nil
         hasInitializedGame = true
 
+        // Pick a partner persona for this game.
+        let persona = PartnerPersona.next()
+        partnerPersona = persona
+        seatEmojis[2] = persona.emoji    // North badge emoji
+
         game = EuchreGame()
         game.humanName = "You"
-        game.setBotNames(BotNameGenerator.nextBotNames(count: 3))
+        let botNames = BotNameGenerator.nextBotNames(count: 3)
+        // Override the North slot (index 1 of the 3 bots) with the persona's name.
+        let partnerBotIndex = 1
+        var adjustedNames = botNames
+        if adjustedNames.count > partnerBotIndex {
+            adjustedNames[partnerBotIndex] = persona.name
+        }
+        game.setBotNames(adjustedNames)
         game.onUpdate = { [weak self] in
             self?.render()
         }
         lastSeenHandSerial = -1 // ensure the first deal always staggers
 
-        game.startNewHand()
+        // Reset dialog tracking for the new game
+        lastDialogHandSerial = -1
+        lastDialogScores = [-1, -1]
+        lastDialogWinningTeam = nil
+        idleDialogTrickCount = 0
+        dismissPartnerBubble()
+
+        // Show partner intro — game.startNewHand() fires after the user dismisses it.
+        needsPartnerIntro = true
+    }
+
+    private func presentPartnerIntroIfNeeded() {
+        guard needsPartnerIntro, let persona = partnerPersona else { return }
+        needsPartnerIntro = false
+
+        // Rebuild header so the badge shows the persona name/emoji before the intro.
+        buildHeader()
+        render()
+
+        let intro = PartnerIntroViewController(persona: persona)
+        intro.onReady = { [weak self] in
+            self?.game.startNewHand()
+        }
+        present(intro, animated: false)
     }
 
     private func buildUI() {
@@ -181,6 +233,7 @@ final class GameViewController: UIViewController {
         view.addSubview(actionRow)
         view.addSubview(hintPillView)
         view.addSubview(handRow)
+        view.addSubview(partnerBubble)
 
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         headerRow.translatesAutoresizingMaskIntoConstraints = false
@@ -188,6 +241,7 @@ final class GameViewController: UIViewController {
         tableContainer.translatesAutoresizingMaskIntoConstraints = false
         actionRow.translatesAutoresizingMaskIntoConstraints = false
         handRow.translatesAutoresizingMaskIntoConstraints = false
+        partnerBubble.translatesAutoresizingMaskIntoConstraints = false
 
         statusContainer.addSubview(statusLabel)
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -231,12 +285,19 @@ final class GameViewController: UIViewController {
             hintPillView.bottomAnchor.constraint(equalTo: handRow.topAnchor, constant: -6),
             hintPillView.leadingAnchor.constraint(greaterThanOrEqualTo: safe.leadingAnchor, constant: 18),
             hintPillView.trailingAnchor.constraint(lessThanOrEqualTo: safe.trailingAnchor, constant: -18),
+
+            // Partner speech bubble — floats below the header row, horizontally centered
+            partnerBubble.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: 6),
+            partnerBubble.centerXAnchor.constraint(equalTo: safe.centerXAnchor),
+            partnerBubble.leadingAnchor.constraint(greaterThanOrEqualTo: safe.leadingAnchor, constant: 18),
+            partnerBubble.trailingAnchor.constraint(lessThanOrEqualTo: safe.trailingAnchor, constant: -18),
         ])
 
         buildHeader()
         buildTable()
         buildBanner()
         buildTrumpFlash()
+        buildPartnerBubble()
     }
 
     private func buildHeader() {
@@ -563,9 +624,112 @@ final class GameViewController: UIViewController {
         rebuildHand(animateDeal: isNewDeal)
         rebuildActions()
 
+        // Partner dialog hooks
+        firePartnerDialogIfNeeded()
+
         manageSuggestionTimer()
         game.kickAIIfNeeded()
         persistIfNeeded()
+    }
+
+    // MARK: - Partner Dialog Firing
+
+    private func firePartnerDialogIfNeeded() {
+        guard let persona = partnerPersona else { return }
+
+        // ── Game-over reaction ────────────────────────────────────────────
+        if let winTeam = game.winningTeam, winTeam != lastDialogWinningTeam {
+            lastDialogWinningTeam = winTeam
+            let trigger: PartnerDialogTrigger = (winTeam == 0) ? .weWon : .weLost
+            let staticLine = persona.randomLine(for: trigger)
+            let ctx = PartnerDialogContext(
+                trigger: trigger,
+                ourScore: game.scores[0],
+                theirScore: game.scores[1],
+                partnerName: persona.name
+            )
+            PartnerDialogAIBridge.generate(for: persona, context: ctx) { [weak self] aiLine in
+                self?.showPartnerDialog(aiLine ?? staticLine, delay: 1.0)
+            }
+            return
+        }
+
+        // ── Hand-over reactions (score / euchre / march) ──────────────────
+        if case .handOver = game.phase, game.handSerial != lastDialogHandSerial {
+            lastDialogHandSerial = game.handSerial
+
+            let ourScore   = game.scores[0]
+            let theirScore = game.scores[1]
+            let ourDelta   = max(0, ourScore  - max(0, lastDialogScores[0]))
+            let theirDelta = max(0, theirScore - max(0, lastDialogScores[1]))
+            lastDialogScores = [ourScore, theirScore]
+
+            let trigger: PartnerDialogTrigger
+            if let makerIndex = game.makerPlayerToDisplay {
+                let makerTeam   = makerIndex % 2
+                let makerTricks = game.tricksWonByTeam[makerTeam]
+                if makerTricks < 3 {
+                    trigger = .euchred
+                } else if makerTricks == 5 {
+                    trigger = .marched
+                } else if ourDelta > 0 {
+                    trigger = .weScored
+                } else if theirDelta > 0 {
+                    trigger = .theyScored
+                } else {
+                    return
+                }
+            } else if ourDelta > 0 {
+                trigger = .weScored
+            } else if theirDelta > 0 {
+                trigger = .theyScored
+            } else {
+                return
+            }
+
+            let staticLine = persona.randomLine(for: trigger)
+            let ctx = PartnerDialogContext(
+                trigger: trigger,
+                ourScore: ourScore,
+                theirScore: theirScore,
+                partnerName: persona.name
+            )
+            PartnerDialogAIBridge.generate(for: persona, context: ctx) { [weak self] aiLine in
+                self?.showPartnerDialog(aiLine ?? staticLine, delay: 0.7)
+            }
+            return
+        }
+
+        // ── Trick-won reactions (occasional, ~1-in-3) ─────────────────────
+        if let trickWinner = game.trickWinnerPlayer {
+            let trickTeam = trickWinner % 2
+            if scheduledSweepWinner == trickWinner {
+                idleDialogTrickCount += 1
+                if idleDialogTrickCount % 3 == 1 {
+                    let trigger: PartnerDialogTrigger = (trickTeam == 0) ? .weTookTrick : .theyTookTrick
+                    showPartnerDialog(persona.randomLine(for: trigger), delay: 0.5)
+                }
+            }
+        }
+
+        // ── Trump-made reaction (50% chance, fires once per hand) ─────────
+        if game.trump != nil,
+           !game.shouldShowUpcard,
+           game.handSerial != lastDialogHandSerial,
+           Bool.random() {
+            showPartnerDialog(persona.randomLine(for: .trumpMade), delay: 0.3)
+        }
+
+        // ── Idle comment during play phase (~1-in-4 tricks, 33% chance) ───
+        if case .playing = game.phase,
+           game.winningTeam == nil,
+           idleDialogTrickCount > 0,
+           idleDialogTrickCount % 4 == 0,
+           partnerBubble.alpha < 0.1,
+           Int.random(in: 0..<3) == 0 {
+            idleDialogTrickCount = 0
+            showPartnerDialog(persona.randomLine(for: .idleComment), delay: 0.4)
+        }
     }
 
     private func trickView(for playerIndex: Int) -> CardView {
@@ -813,6 +977,73 @@ final class GameViewController: UIViewController {
                 }
             }
         }
+    }
+
+    // MARK: - Partner Speech Bubble
+
+    private func buildPartnerBubble() {
+        partnerBubble.backgroundColor = UIColor(red: 26/255, green: 33/255, blue: 44/255, alpha: 1)
+        partnerBubble.layer.cornerRadius = 14
+        partnerBubble.layer.borderWidth = 1
+        partnerBubble.layer.borderColor = UIColor(white: 0.30, alpha: 1).cgColor
+        partnerBubble.alpha = 0
+        partnerBubble.isUserInteractionEnabled = false
+
+        partnerBubbleLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+        partnerBubbleLabel.textColor = .white
+        partnerBubbleLabel.textAlignment = .center
+        partnerBubbleLabel.numberOfLines = 2
+        partnerBubbleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        partnerBubble.addSubview(partnerBubbleLabel)
+        NSLayoutConstraint.activate([
+            partnerBubbleLabel.topAnchor.constraint(equalTo: partnerBubble.topAnchor, constant: 8),
+            partnerBubbleLabel.bottomAnchor.constraint(equalTo: partnerBubble.bottomAnchor, constant: -8),
+            partnerBubbleLabel.leadingAnchor.constraint(equalTo: partnerBubble.leadingAnchor, constant: 14),
+            partnerBubbleLabel.trailingAnchor.constraint(equalTo: partnerBubble.trailingAnchor, constant: -14),
+        ])
+    }
+
+    /// Shows a speech bubble from the partner for ~3 seconds, then fades out.
+    /// Safe to call from any render pass — dismisses any prior bubble cleanly.
+    func showPartnerDialog(_ text: String, delay: TimeInterval = 0) {
+        partnerBubbleTimer?.invalidate()
+        partnerBubbleTimer = nil
+
+        guard !text.isEmpty else { return }
+
+        let show = { [weak self] in
+            guard let self else { return }
+            self.partnerBubbleLabel.text = text
+            self.partnerBubble.transform = CGAffineTransform(scaleX: 0.88, y: 0.88)
+            UIView.animate(
+                withDuration: 0.22,
+                delay: 0,
+                usingSpringWithDamping: 0.72,
+                initialSpringVelocity: 0.4,
+                options: []
+            ) {
+                self.partnerBubble.alpha = 1
+                self.partnerBubble.transform = .identity
+            }
+            self.partnerBubbleTimer = Timer.scheduledTimer(withTimeInterval: 3.2, repeats: false) { [weak self] _ in
+                UIView.animate(withDuration: 0.22, delay: 0, options: [.curveEaseIn]) {
+                    self?.partnerBubble.alpha = 0
+                }
+            }
+        }
+
+        if delay > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: show)
+        } else {
+            show()
+        }
+    }
+
+    private func dismissPartnerBubble() {
+        partnerBubbleTimer?.invalidate()
+        partnerBubbleTimer = nil
+        partnerBubble.alpha = 0
     }
 
     // MARK: - Euchre / March Banner
