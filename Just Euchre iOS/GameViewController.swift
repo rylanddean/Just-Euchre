@@ -949,33 +949,31 @@ final class GameViewController: UIViewController {
         view.bringSubviewToFront(partnerBubble)
     }
 
-    /// Positions the bubble frame above playerBadges[2] (the partner / North seat).
-    /// Call this before animating in so the bubble is always over the right avatar.
+    /// Positions the bubble frame below playerBadges[2] (the partner / North seat),
+    /// with an upward-pointing tail aimed at the partner's avatar.
     private func positionPartnerBubble(text: String) {
         guard playerBadges.count > 2 else { return }
         let badge = playerBadges[2]
 
-        // Measure text to get a natural width — cap at 220pt
         partnerBubble.setText(text)
         let maxW: CGFloat = min(220, view.bounds.width - 40)
         let fitted = partnerBubble.sizeThatFits(CGSize(width: maxW, height: 200))
-        let bubbleW = max(fitted.width + 28, 80)
-        let bubbleH = fitted.height + 18 + PartnerChatBubbleView.tailHeight
+        let bubbleW = max(fitted.width, 80)
+        let bubbleH = fitted.height
 
-        // Center over the badge, clamped to safe margins
-        let badgeCenter = badge.convert(CGPoint(x: badge.bounds.midX, y: 0), to: view)
-        let cx = badgeCenter.x
+        // Center horizontally over the badge, clamped to safe margins
+        let badgeFrame = badge.convert(badge.bounds, to: view)
+        let cx = badgeFrame.midX
         let rawX = cx - bubbleW / 2
         let x = max(18, min(rawX, view.bounds.width - 18 - bubbleW))
 
-        // Sit the tail tip just at the top of the avatar circle (bottom of avatarContainer = badge.frame.height from badge.top)
-        let badgeTop = badge.convert(badge.bounds, to: view).minY
-        let y = badgeTop - bubbleH - 4
+        // Place bubble just below the badge's bottom edge; tail tip points up into the badge
+        let y = badgeFrame.maxY + 4
 
         partnerBubble.frame = CGRect(x: x, y: y, width: bubbleW, height: bubbleH)
-        // Tail should point at badge center X, offset relative to bubble origin
         partnerBubble.tailOffsetX = cx - x
         partnerBubble.setNeedsDisplay()
+        partnerBubble.layoutIfNeeded()
     }
 
     /// Shows the partner speech bubble above their avatar for ~3 seconds then fades out.
@@ -1264,7 +1262,8 @@ private struct Theme {
 
 // MARK: - Partner Chat Bubble
 
-/// Rounded-rect speech bubble with a downward-pointing tail, drawn entirely in Core Graphics.
+/// Rounded-rect speech bubble with an upward-pointing tail, drawn entirely in Core Graphics.
+/// The tail sits at the TOP of the view and points up toward the partner's avatar badge.
 /// Frame-based (translatesAutoresizingMaskIntoConstraints = true).
 private final class PartnerChatBubbleView: UIView {
 
@@ -1292,9 +1291,10 @@ private final class PartnerChatBubbleView: UIView {
         label.numberOfLines = 2
         label.translatesAutoresizingMaskIntoConstraints = false
         addSubview(label)
+        // Label sits inside the body — below the tail at the top
         NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: topAnchor, constant: 9),
-            label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -(9 + Self.tailHeight)),
+            label.topAnchor.constraint(equalTo: topAnchor, constant: Self.tailHeight + 9),
+            label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -9),
             label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 13),
             label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -13),
         ])
@@ -1309,7 +1309,7 @@ private final class PartnerChatBubbleView: UIView {
     override func sizeThatFits(_ size: CGSize) -> CGSize {
         let text = label.text ?? ""
         let attrs: [NSAttributedString.Key: Any] = [.font: label.font as Any]
-        let maxTextW = size.width - 26
+        let maxTextW = max(size.width - 26, 1)
         let textSize = (text as NSString).boundingRect(
             with: CGSize(width: maxTextW, height: 200),
             options: [.usesLineFragmentOrigin, .usesFontLeading],
@@ -1326,35 +1326,39 @@ private final class PartnerChatBubbleView: UIView {
         let tail = Self.tailHeight
         let halfTail = Self.tailHalfWidth
 
-        // Body occupies everything above the tail
-        let body = CGRect(x: 1, y: 1, width: rect.width - 2, height: rect.height - tail - 1)
+        // Body sits below the tail
+        let body = CGRect(x: 1, y: tail, width: rect.width - 2, height: rect.height - tail - 1)
 
-        // Clamp tail center so it stays on the bubble
+        // Clamp tail center X so it stays within the rounded corners
         let tc = min(max(tailOffsetX, r + halfTail + 2), rect.width - r - halfTail - 2)
-        let tipY = body.maxY + tail
+        let tipY: CGFloat = 0  // tail tip points upward
 
-        // Build the full outline path
+        // Build path: start at tail tip, go right-and-down into body, around body clockwise
         let path = UIBezierPath()
+        // Top-left corner of body
         path.move(to: CGPoint(x: body.minX + r, y: body.minY))
+        // Tail: left base → tip → right base
+        path.addLine(to: CGPoint(x: tc - halfTail, y: body.minY))
+        path.addLine(to: CGPoint(x: tc, y: tipY))
+        path.addLine(to: CGPoint(x: tc + halfTail, y: body.minY))
+        // Top-right corner
         path.addLine(to: CGPoint(x: body.maxX - r, y: body.minY))
         path.addArc(withCenter: CGPoint(x: body.maxX - r, y: body.minY + r),
                     radius: r, startAngle: -.pi / 2, endAngle: 0, clockwise: true)
+        // Right edge → bottom-right corner
         path.addLine(to: CGPoint(x: body.maxX, y: body.maxY - r))
         path.addArc(withCenter: CGPoint(x: body.maxX - r, y: body.maxY - r),
                     radius: r, startAngle: 0, endAngle: .pi / 2, clockwise: true)
-        // Tail on bottom edge
-        path.addLine(to: CGPoint(x: tc + halfTail, y: body.maxY))
-        path.addLine(to: CGPoint(x: tc, y: tipY))
-        path.addLine(to: CGPoint(x: tc - halfTail, y: body.maxY))
+        // Bottom edge → bottom-left corner
         path.addLine(to: CGPoint(x: body.minX + r, y: body.maxY))
         path.addArc(withCenter: CGPoint(x: body.minX + r, y: body.maxY - r),
                     radius: r, startAngle: .pi / 2, endAngle: .pi, clockwise: true)
+        // Left edge → top-left corner
         path.addLine(to: CGPoint(x: body.minX, y: body.minY + r))
         path.addArc(withCenter: CGPoint(x: body.minX + r, y: body.minY + r),
                     radius: r, startAngle: .pi, endAngle: -.pi / 2, clockwise: true)
         path.close()
 
-        // Fill then stroke
         ctx.saveGState()
         bubbleFill.setFill()
         path.fill()
