@@ -473,7 +473,12 @@ final class GameViewController: UIViewController {
             trumpBadge.isHidden = false
             trumpBadge.setText("Trump: \(trump.symbol)")
             // Flash the suit symbol the first time trump is set this hand.
-            if trump != lastFlashedTrump {
+            // Skip during dealerDiscard — the upcard is still on screen and would be
+            // obscured. Leave lastFlashedTrump unchanged so the flash fires as soon as
+            // play begins and the table is clear.
+            if trump != lastFlashedTrump, case .dealerDiscard = game.phase {
+                // deferred — do nothing
+            } else if trump != lastFlashedTrump {
                 lastFlashedTrump = trump
                 flashTrumpSuit(trump)
             }
@@ -767,7 +772,7 @@ final class GameViewController: UIViewController {
     // MARK: - Trump Suit Flash
 
     private func buildTrumpFlash() {
-        trumpFlashLabel.font = UIFont.systemFont(ofSize: 72, weight: .bold)
+        trumpFlashLabel.numberOfLines = 0
         trumpFlashLabel.textAlignment = .center
         trumpFlashLabel.alpha = 0
         trumpFlashLabel.isUserInteractionEnabled = false
@@ -780,18 +785,28 @@ final class GameViewController: UIViewController {
     }
 
     private func flashTrumpSuit(_ suit: EuchreGame.Card.Suit) {
-        trumpFlashLabel.text = suit.symbol
-        trumpFlashLabel.textColor = suit.isRed ? theme.accentRed : .white
+        let color: UIColor = suit.isRed ? theme.accentRed : .white
+        let wordAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 18, weight: .semibold),
+            .foregroundColor: color.withAlphaComponent(0.65),
+        ]
+        let symbolAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 64, weight: .bold),
+            .foregroundColor: color,
+        ]
+        let text = NSMutableAttributedString(string: "Trump\n", attributes: wordAttrs)
+        text.append(NSAttributedString(string: suit.symbol, attributes: symbolAttrs))
+        trumpFlashLabel.attributedText = text
         trumpFlashLabel.transform = CGAffineTransform(scaleX: 0.4, y: 0.4)
         trumpFlashLabel.alpha = 0
 
-        UIView.animate(withDuration: 0.14, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8, options: []) {
+        UIView.animate(withDuration: 0.18, delay: 0, usingSpringWithDamping: 0.65, initialSpringVelocity: 0.8, options: []) {
             self.trumpFlashLabel.transform = .identity
             self.trumpFlashLabel.alpha = 1
         } completion: { _ in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
-                UIView.animate(withDuration: 0.20, delay: 0, options: [.curveEaseIn]) {
-                    self?.trumpFlashLabel.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+                UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseIn]) {
+                    self?.trumpFlashLabel.transform = CGAffineTransform(scaleX: 1.1, y: 1.1)
                     self?.trumpFlashLabel.alpha = 0
                 } completion: { _ in
                     self?.trumpFlashLabel.transform = .identity
@@ -1928,7 +1943,19 @@ private final class EuchreGame {
         guard let turn = currentTurnPlayer, turn != 0 else { return }
         didScheduleAI = true
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) { [weak self] in
+        // Bidding gets a longer beat so the player can read what each bot decides.
+        // The first trick of a hand gets an extra pause so the trump announcement can land.
+        let delay: Double
+        switch phase {
+        case .makingTrumpRound1, .makingTrumpRound2:
+            delay = 0.85
+        case .playing(_, let trickIndex) where trickIndex == 0:
+            delay = 1.5
+        default:
+            delay = 0.55
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self else { return }
             self.didScheduleAI = false
             self.performAIMove(for: turn)
@@ -2096,7 +2123,6 @@ private final class EuchreGame {
                 self.scoreHand()
                 self.phase = .handOver
                 self.notify()
-                self.scheduleNextHandIfNeeded()
                 return
             }
 
@@ -2131,22 +2157,6 @@ private final class EuchreGame {
 
         if scores[0] >= 10 { winningTeam = 0 }
         if scores[1] >= 10 { winningTeam = 1 }
-    }
-
-    private func scheduleNextHandIfNeeded() {
-        guard winningTeam == nil else { return }
-        guard !didScheduleNextHand else { return }
-        didScheduleNextHand = true
-        let scheduledForSerial = handSerial
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { [weak self] in
-            guard let self else { return }
-            guard self.handSerial == scheduledForSerial else { return }
-            guard self.winningTeam == nil else { return }
-            guard case .handOver = self.phase else { return }
-            self.dealer = (self.dealer + 1) % 4
-            self.startNewHand()
-        }
     }
 
     // MARK: - AI
