@@ -1307,8 +1307,16 @@ private final class PartnerChatBubbleView: UIView {
     }
 
     override func sizeThatFits(_ size: CGSize) -> CGSize {
-        let textSize = label.sizeThatFits(CGSize(width: size.width - 26, height: size.height))
-        return CGSize(width: textSize.width + 26, height: textSize.height + 18 + Self.tailHeight)
+        let text = label.text ?? ""
+        let attrs: [NSAttributedString.Key: Any] = [.font: label.font as Any]
+        let maxTextW = size.width - 26
+        let textSize = (text as NSString).boundingRect(
+            with: CGSize(width: maxTextW, height: 200),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: attrs,
+            context: nil
+        ).size
+        return CGSize(width: ceil(textSize.width) + 26, height: ceil(textSize.height) + 18 + Self.tailHeight)
     }
 
     override func draw(_ rect: CGRect) {
