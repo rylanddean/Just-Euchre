@@ -55,7 +55,6 @@ final class GameViewController: UIViewController {
     private var lastDialogHandSerial = -1
     private var lastDialogScores: [Int] = [-1, -1]
     private var lastDialogWinningTeam: Int? = nil
-    private var idleDialogTrickCount = 0  // how many tricks since last idle comment
 
     private var suggestionTimer: Timer?
     private weak var hintedCardView: CardView?
@@ -153,7 +152,6 @@ final class GameViewController: UIViewController {
         lastDialogHandSerial = -1
         lastDialogScores = [-1, -1]
         lastDialogWinningTeam = nil
-        idleDialogTrickCount = 0
         dismissPartnerBubble()
 
         // Show partner intro — game.startNewHand() fires after the user dismisses it.
@@ -694,36 +692,6 @@ final class GameViewController: UIViewController {
             return
         }
 
-        // ── Trick-won reactions (occasional, ~1-in-3) ─────────────────────
-        if let trickWinner = game.trickWinnerPlayer {
-            let trickTeam = trickWinner % 2
-            if scheduledSweepWinner == trickWinner {
-                idleDialogTrickCount += 1
-                if idleDialogTrickCount % 3 == 1 {
-                    let trigger: PartnerDialogTrigger = (trickTeam == 0) ? .weTookTrick : .theyTookTrick
-                    showPartnerDialog(persona.randomLine(for: trigger), delay: 0.5)
-                }
-            }
-        }
-
-        // ── Trump-made reaction (50% chance, fires once per hand) ─────────
-        if game.trump != nil,
-           !game.shouldShowUpcard,
-           game.handSerial != lastDialogHandSerial,
-           Bool.random() {
-            showPartnerDialog(persona.randomLine(for: .trumpMade), delay: 0.3)
-        }
-
-        // ── Idle comment during play phase (~1-in-4 tricks, 33% chance) ───
-        if case .playing = game.phase,
-           game.winningTeam == nil,
-           idleDialogTrickCount > 0,
-           idleDialogTrickCount % 4 == 0,
-           partnerBubble.alpha < 0.1,
-           Int.random(in: 0..<3) == 0 {
-            idleDialogTrickCount = 0
-            showPartnerDialog(persona.randomLine(for: .idleComment), delay: 0.4)
-        }
     }
 
     private func trickView(for playerIndex: Int) -> CardView {
@@ -1031,8 +999,10 @@ final class GameViewController: UIViewController {
                 self.partnerBubble.alpha = 1
                 self.partnerBubble.transform = .identity
             }
-            self.partnerBubbleTimer = Timer.scheduledTimer(withTimeInterval: 3.2, repeats: false) { [weak self] _ in
-                UIView.animate(withDuration: 0.22, delay: 0, options: [.curveEaseIn]) {
+            // ~0.05s per character, clamped between 3.5s and 7s
+            let readTime = min(max(Double(text.count) * 0.05, 3.5), 7.0)
+            self.partnerBubbleTimer = Timer.scheduledTimer(withTimeInterval: readTime, repeats: false) { [weak self] _ in
+                UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseIn]) {
                     self?.partnerBubble.alpha = 0
                 }
             }
