@@ -49,8 +49,7 @@ final class GameViewController: UIViewController {
     // Partner persona + table talk
     private var partnerPersona: PartnerPersona?
     private var needsPartnerIntro = false
-    private let partnerBubble = UIView()
-    private let partnerBubbleLabel = UILabel()
+    private let partnerBubble = PartnerChatBubbleView()
     private var partnerBubbleTimer: Timer?
     // Trigger deduplication: track last hand serial and scores we fired dialog for
     private var lastDialogHandSerial = -1
@@ -241,7 +240,7 @@ final class GameViewController: UIViewController {
         tableContainer.translatesAutoresizingMaskIntoConstraints = false
         actionRow.translatesAutoresizingMaskIntoConstraints = false
         handRow.translatesAutoresizingMaskIntoConstraints = false
-        partnerBubble.translatesAutoresizingMaskIntoConstraints = false
+        partnerBubble.translatesAutoresizingMaskIntoConstraints = true
 
         statusContainer.addSubview(statusLabel)
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -286,11 +285,6 @@ final class GameViewController: UIViewController {
             hintPillView.leadingAnchor.constraint(greaterThanOrEqualTo: safe.leadingAnchor, constant: 18),
             hintPillView.trailingAnchor.constraint(lessThanOrEqualTo: safe.trailingAnchor, constant: -18),
 
-            // Partner speech bubble — floats below the header row, horizontally centered
-            partnerBubble.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: 6),
-            partnerBubble.centerXAnchor.constraint(equalTo: safe.centerXAnchor),
-            partnerBubble.leadingAnchor.constraint(greaterThanOrEqualTo: safe.leadingAnchor, constant: 18),
-            partnerBubble.trailingAnchor.constraint(lessThanOrEqualTo: safe.trailingAnchor, constant: -18),
         ])
 
         buildHeader()
@@ -982,45 +976,56 @@ final class GameViewController: UIViewController {
     // MARK: - Partner Speech Bubble
 
     private func buildPartnerBubble() {
-        partnerBubble.backgroundColor = UIColor(red: 26/255, green: 33/255, blue: 44/255, alpha: 1)
-        partnerBubble.layer.cornerRadius = 14
-        partnerBubble.layer.borderWidth = 1
-        partnerBubble.layer.borderColor = UIColor(white: 0.30, alpha: 1).cgColor
         partnerBubble.alpha = 0
         partnerBubble.isUserInteractionEnabled = false
-
-        partnerBubbleLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
-        partnerBubbleLabel.textColor = .white
-        partnerBubbleLabel.textAlignment = .center
-        partnerBubbleLabel.numberOfLines = 2
-        partnerBubbleLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        partnerBubble.addSubview(partnerBubbleLabel)
-        NSLayoutConstraint.activate([
-            partnerBubbleLabel.topAnchor.constraint(equalTo: partnerBubble.topAnchor, constant: 8),
-            partnerBubbleLabel.bottomAnchor.constraint(equalTo: partnerBubble.bottomAnchor, constant: -8),
-            partnerBubbleLabel.leadingAnchor.constraint(equalTo: partnerBubble.leadingAnchor, constant: 14),
-            partnerBubbleLabel.trailingAnchor.constraint(equalTo: partnerBubble.trailingAnchor, constant: -14),
-        ])
+        view.bringSubviewToFront(partnerBubble)
     }
 
-    /// Shows a speech bubble from the partner for ~3 seconds, then fades out.
-    /// Safe to call from any render pass — dismisses any prior bubble cleanly.
+    /// Positions the bubble frame above playerBadges[2] (the partner / North seat).
+    /// Call this before animating in so the bubble is always over the right avatar.
+    private func positionPartnerBubble(text: String) {
+        guard playerBadges.count > 2 else { return }
+        let badge = playerBadges[2]
+
+        // Measure text to get a natural width — cap at 220pt
+        partnerBubble.setText(text)
+        let maxW: CGFloat = min(220, view.bounds.width - 40)
+        let fitted = partnerBubble.sizeThatFits(CGSize(width: maxW, height: 200))
+        let bubbleW = max(fitted.width + 28, 80)
+        let bubbleH = fitted.height + 18 + PartnerChatBubbleView.tailHeight
+
+        // Center over the badge, clamped to safe margins
+        let badgeCenter = badge.convert(CGPoint(x: badge.bounds.midX, y: 0), to: view)
+        let cx = badgeCenter.x
+        let rawX = cx - bubbleW / 2
+        let x = max(18, min(rawX, view.bounds.width - 18 - bubbleW))
+
+        // Sit the tail tip just at the top of the avatar circle (bottom of avatarContainer = badge.frame.height from badge.top)
+        let badgeTop = badge.convert(badge.bounds, to: view).minY
+        let y = badgeTop - bubbleH - 4
+
+        partnerBubble.frame = CGRect(x: x, y: y, width: bubbleW, height: bubbleH)
+        // Tail should point at badge center X, offset relative to bubble origin
+        partnerBubble.tailOffsetX = cx - x
+        partnerBubble.setNeedsDisplay()
+    }
+
+    /// Shows the partner speech bubble above their avatar for ~3 seconds then fades out.
     func showPartnerDialog(_ text: String, delay: TimeInterval = 0) {
         partnerBubbleTimer?.invalidate()
         partnerBubbleTimer = nil
-
         guard !text.isEmpty else { return }
 
         let show = { [weak self] in
             guard let self else { return }
-            self.partnerBubbleLabel.text = text
-            self.partnerBubble.transform = CGAffineTransform(scaleX: 0.88, y: 0.88)
+            self.positionPartnerBubble(text: text)
+            self.view.bringSubviewToFront(self.partnerBubble)
+            self.partnerBubble.transform = CGAffineTransform(scaleX: 0.85, y: 0.85).translatedBy(x: 0, y: 6)
             UIView.animate(
-                withDuration: 0.22,
+                withDuration: 0.24,
                 delay: 0,
-                usingSpringWithDamping: 0.72,
-                initialSpringVelocity: 0.4,
+                usingSpringWithDamping: 0.70,
+                initialSpringVelocity: 0.5,
                 options: []
             ) {
                 self.partnerBubble.alpha = 1
@@ -1285,6 +1290,101 @@ private struct Theme {
     let pillBackground = UIColor(red: 22/255, green: 28/255, blue: 38/255, alpha: 1)
     let pillBorder = UIColor(white: 0.28, alpha: 1)
     let highlightBorder = UIColor(red: 82/255, green: 246/255, blue: 170/255, alpha: 0.65)
+}
+
+// MARK: - Partner Chat Bubble
+
+/// Rounded-rect speech bubble with a downward-pointing tail, drawn entirely in Core Graphics.
+/// Frame-based (translatesAutoresizingMaskIntoConstraints = true).
+private final class PartnerChatBubbleView: UIView {
+
+    static let tailHeight: CGFloat = 10
+    private static let cornerRadius: CGFloat = 13
+    private static let tailHalfWidth: CGFloat = 8
+
+    /// X position of the tail tip within the view's own coordinate space.
+    var tailOffsetX: CGFloat = 0 { didSet { setNeedsDisplay() } }
+
+    private let label = UILabel()
+
+    private let bubbleFill   = UIColor(red: 26/255, green: 33/255, blue: 44/255, alpha: 0.97)
+    private let bubbleBorder = UIColor(white: 0.35, alpha: 1)
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isOpaque = false
+        backgroundColor = .clear
+        isUserInteractionEnabled = false
+
+        label.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+        label.textColor = .white
+        label.textAlignment = .center
+        label.numberOfLines = 2
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: topAnchor, constant: 9),
+            label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -(9 + Self.tailHeight)),
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 13),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -13),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func setText(_ text: String) {
+        label.text = text
+    }
+
+    override func sizeThatFits(_ size: CGSize) -> CGSize {
+        let textSize = label.sizeThatFits(CGSize(width: size.width - 26, height: size.height))
+        return CGSize(width: textSize.width + 26, height: textSize.height + 18 + Self.tailHeight)
+    }
+
+    override func draw(_ rect: CGRect) {
+        guard let ctx = UIGraphicsGetCurrentContext() else { return }
+
+        let r = Self.cornerRadius
+        let tail = Self.tailHeight
+        let halfTail = Self.tailHalfWidth
+
+        // Body occupies everything above the tail
+        let body = CGRect(x: 1, y: 1, width: rect.width - 2, height: rect.height - tail - 1)
+
+        // Clamp tail center so it stays on the bubble
+        let tc = min(max(tailOffsetX, r + halfTail + 2), rect.width - r - halfTail - 2)
+        let tipY = body.maxY + tail
+
+        // Build the full outline path
+        let path = UIBezierPath()
+        path.move(to: CGPoint(x: body.minX + r, y: body.minY))
+        path.addLine(to: CGPoint(x: body.maxX - r, y: body.minY))
+        path.addArc(withCenter: CGPoint(x: body.maxX - r, y: body.minY + r),
+                    radius: r, startAngle: -.pi / 2, endAngle: 0, clockwise: true)
+        path.addLine(to: CGPoint(x: body.maxX, y: body.maxY - r))
+        path.addArc(withCenter: CGPoint(x: body.maxX - r, y: body.maxY - r),
+                    radius: r, startAngle: 0, endAngle: .pi / 2, clockwise: true)
+        // Tail on bottom edge
+        path.addLine(to: CGPoint(x: tc + halfTail, y: body.maxY))
+        path.addLine(to: CGPoint(x: tc, y: tipY))
+        path.addLine(to: CGPoint(x: tc - halfTail, y: body.maxY))
+        path.addLine(to: CGPoint(x: body.minX + r, y: body.maxY))
+        path.addArc(withCenter: CGPoint(x: body.minX + r, y: body.maxY - r),
+                    radius: r, startAngle: .pi / 2, endAngle: .pi, clockwise: true)
+        path.addLine(to: CGPoint(x: body.minX, y: body.minY + r))
+        path.addArc(withCenter: CGPoint(x: body.minX + r, y: body.minY + r),
+                    radius: r, startAngle: .pi, endAngle: -.pi / 2, clockwise: true)
+        path.close()
+
+        // Fill then stroke
+        ctx.saveGState()
+        bubbleFill.setFill()
+        path.fill()
+        bubbleBorder.setStroke()
+        path.lineWidth = 1
+        path.stroke()
+        ctx.restoreGState()
+    }
 }
 
 private final class BadgeView: UIView {
