@@ -987,15 +987,16 @@ final class GameViewController: UIViewController {
         partnerBubbleTimer = nil
         guard !text.isEmpty else { return }
 
+        // Suppress action buttons immediately — before the delay fires —
+        // so the Deal/New Game button never briefly appears then disappears.
+        isPartnerTalking = true
+        rebuildActions()
+
         let show = { [weak self] in
             guard let self else { return }
             self.positionPartnerBubble(text: text)
             self.view.bringSubviewToFront(self.partnerBubble)
             self.partnerBubble.transform = CGAffineTransform(scaleX: 0.85, y: 0.85).translatedBy(x: 0, y: 6)
-
-            // Hide action buttons while partner speaks so the player naturally pauses
-            self.isPartnerTalking = true
-            self.rebuildActions()
 
             UIView.animate(
                 withDuration: 0.24,
