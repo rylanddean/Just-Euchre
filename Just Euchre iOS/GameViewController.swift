@@ -59,6 +59,7 @@ final class GameViewController: UIViewController {
 
     private var suggestionTimer: Timer?
     private weak var hintedCardView: CardView?
+    private var hintedActionTitle: String?
     private let hintPillView = UIView()
     private let hintLabel = UILabel()
 
@@ -799,6 +800,9 @@ final class GameViewController: UIViewController {
             button.addAction(UIAction { [weak self] _ in
                 self?.performHumanAction(action)
             }, for: .touchUpInside)
+            if let hint = hintedActionTitle, title == hint {
+                applyHintStyle(to: button)
+            }
             actionRow.addArrangedSubview(button)
         }
     }
@@ -1198,21 +1202,22 @@ final class GameViewController: UIViewController {
     }
 
     private func manageSuggestionTimer() {
-        let isHumanPlayTurn: Bool
-        if case .playing(let turn, _) = game.phase, turn == 0 {
-            isHumanPlayTurn = true
-        } else {
-            isHumanPlayTurn = false
+        let isHumanDecisionTurn: Bool
+        switch game.phase {
+        case .playing(let turn, _)        where turn == 0: isHumanDecisionTurn = true
+        case .makingTrumpRound1(let turn) where turn == 0: isHumanDecisionTurn = true
+        case .makingTrumpRound2(let turn) where turn == 0: isHumanDecisionTurn = true
+        default: isHumanDecisionTurn = false
         }
 
-        guard isFriendlySuggestionsEnabled && isHumanPlayTurn else {
+        guard isFriendlySuggestionsEnabled && isHumanDecisionTurn else {
             cancelSuggestion()
             return
         }
 
         // Only start if no timer is already running.
         guard suggestionTimer == nil else { return }
-        suggestionTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in
+        suggestionTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: false) { [weak self] _ in
             self?.showSuggestion()
         }
     }
@@ -1224,12 +1229,28 @@ final class GameViewController: UIViewController {
             UIView.animate(withDuration: 0.2) { cv.isHinted = false }
             hintedCardView = nil
         }
+        if hintedActionTitle != nil {
+            hintedActionTitle = nil
+            rebuildActions()
+        }
         guard hintPillView.alpha > 0 else { return }
         UIView.animate(withDuration: 0.2) { self.hintPillView.alpha = 0 }
     }
 
     private func showSuggestion() {
         suggestionTimer = nil
+        switch game.phase {
+        case .playing(let turn, _) where turn == 0:
+            showCardSuggestion()
+        case .makingTrumpRound1(let turn) where turn == 0,
+             .makingTrumpRound2(let turn) where turn == 0:
+            showTrumpSuggestion()
+        default:
+            break
+        }
+    }
+
+    private func showCardSuggestion() {
         guard let suggestion = game.suggestedPlayForHuman() else { return }
 
         // Find the CardView matching the suggested card.
@@ -1237,9 +1258,7 @@ final class GameViewController: UIViewController {
         guard let idx = hand.firstIndex(of: suggestion.card), idx < handCardViews.count else { return }
         let cardView = handCardViews[idx]
 
-        // Haptic feedback.
-        let haptic = UIImpactFeedbackGenerator(style: .medium)
-        haptic.impactOccurred()
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
         // Wiggle the card, then lift it to mark it as the suggestion.
         let wiggle = CAKeyframeAnimation(keyPath: "transform.rotation.z")
@@ -1255,9 +1274,24 @@ final class GameViewController: UIViewController {
             self.hintedCardView = cardView
         }
 
-        // Show hint label.
         hintLabel.text = "💡 \(suggestion.reason)"
         UIView.animate(withDuration: 0.25) { self.hintPillView.alpha = 1 }
+    }
+
+    private func showTrumpSuggestion() {
+        guard let (title, reason) = game.suggestedTrumpAction() else { return }
+        hintedActionTitle = title
+        rebuildActions()    // rebuild so the highlighted button appears immediately
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        hintLabel.text = "💡 \(reason)"
+        UIView.animate(withDuration: 0.25) { self.hintPillView.alpha = 1 }
+    }
+
+    private func applyHintStyle(to button: UIButton) {
+        let gold = UIColor(red: 253/255, green: 215/255, blue: 88/255, alpha: 1)
+        button.backgroundColor = gold
+        button.setTitleColor(UIColor(white: 0.08, alpha: 1), for: .normal)
+        button.layer.borderColor = gold.withAlphaComponent(0.5).cgColor
     }
 }
 
@@ -2625,6 +2659,27 @@ private final class EuchreGame {
     }
 
     // MARK: - Friendly Suggestion
+
+    /// Returns the suggested trump action (button title + hint text) for player 0.
+    func suggestedTrumpAction() -> (title: String, reason: String)? {
+        switch phase {
+        case .makingTrumpRound1 where currentTurnPlayer == 0:
+            if shouldOrderUp(player: 0) {
+                let suit = upcard?.suit.symbol ?? ""
+                return ("Order Up", "Strong hand for \(suit) trump")
+            } else {
+                return ("Pass", "Hand too weak to order up")
+            }
+        case .makingTrumpRound2 where currentTurnPlayer == 0:
+            if let suit = chooseTrumpInRound2(player: 0) {
+                return (suit.symbol, "\(suit.symbol) looks like your best suit")
+            } else {
+                return ("Pass", "No strong suit — consider passing")
+            }
+        default:
+            return nil
+        }
+    }
 
     func suggestedPlayForHuman() -> (card: Card, reason: String)? {
         guard case .playing(let turn, _) = phase, turn == 0 else { return nil }
