@@ -1333,7 +1333,7 @@ private final class PartnerChatBubbleView: UIView {
         label.font = UIFont.systemFont(ofSize: 13, weight: .medium)
         label.textColor = .white
         label.textAlignment = .center
-        label.numberOfLines = 2
+        label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
         addSubview(label)
         // Label sits inside the body — below the tail at the top
