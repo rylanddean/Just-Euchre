@@ -415,6 +415,25 @@
       display: block;
     }
 
+    .screenshot-placeholder {
+      border-style: dashed;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .placeholder-emoji {
+      font-size: 26px;
+      opacity: 0.5;
+    }
+
+    .placeholder-label {
+      font-size: 11px;
+      color: var(--subtle);
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+
     /* ── App Store CTA ────────────────────────────────────────── */
     .cta-section {
       padding: 80px 0;
@@ -544,7 +563,10 @@
           <img src="icon/icon.png" class="nav-icon" alt="Just Euchre icon" />
           <span class="wordmark">Just <span>Euchre</span></span>
         </a>
-        <a href="https://apps.apple.com/ca/app/just-euchre/id6761267534" class="btn-pill">App Store</a>
+        <div style="display:flex;align-items:center;gap:16px;">
+          <a href="press.html" style="font-size:14px;font-weight:600;color:var(--muted);transition:color 0.15s;" onmouseover="this.style.color='var(--white)'" onmouseout="this.style.color='var(--muted)'">Press</a>
+          <a href="https://apps.apple.com/ca/app/just-euchre/id6761267534" class="btn-pill">App Store</a>
+        </div>
       </div>
     </div>
   </nav>
@@ -616,6 +638,30 @@
           <p class="feature-desc">No sign-ups. No trackers. No upsells. Download it and play. That's the whole deal.</p>
         </div>
 
+        <div class="feature-card">
+          <div class="feature-icon">🃏</div>
+          <div class="feature-title">Custom Card Packs</div>
+          <p class="feature-desc">12 themed card designs — Classic, Noir, Dusk, Deep Blue, and more. Change the look of your deck without changing the game.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🤝</div>
+          <div class="feature-title">Partner Personas</div>
+          <p class="feature-desc">Each game, you're assigned one of 10 AI partners — Rex, Eunice, Chad, and seven others — each with their own personality and something to say.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">😎</div>
+          <div class="feature-title">Pick Your Emoji</div>
+          <p class="feature-desc">Choose an emoji to represent you at the table. A small thing. Makes it yours.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🌿</div>
+          <div class="feature-title">Daily Nudge</div>
+          <p class="feature-desc">After your game, a short reminder to go do something else. Go touch grass. Drink some water. You played. Now live your life.</p>
+        </div>
+
       </div>
     </div>
   </section>
@@ -680,6 +726,21 @@
           <img src="screenshots/IMG_0471.PNG" alt="Just Euchre screenshot" />
         </div>
 
+        <div class="screenshot-frame screenshot-placeholder">
+          <span class="placeholder-emoji">🃏</span>
+          <span class="placeholder-label">Card Packs</span>
+        </div>
+
+        <div class="screenshot-frame screenshot-placeholder">
+          <span class="placeholder-emoji">😎</span>
+          <span class="placeholder-label">Emoji Picker</span>
+        </div>
+
+        <div class="screenshot-frame screenshot-placeholder">
+          <span class="placeholder-emoji">💬</span>
+          <span class="placeholder-label">Partner Chat</span>
+        </div>
+
       </div>
     </div>
   </section>
@@ -711,6 +772,7 @@
         <div style="display:flex;gap:20px;">
           <a href="privacy.html" style="font-size:13px;color:var(--subtle);transition:color 0.15s;">Privacy</a>
           <a href="support.html" style="font-size:13px;color:var(--subtle);transition:color 0.15s;">Support</a>
+          <a href="press.html" style="font-size:13px;color:var(--subtle);transition:color 0.15s;">Press</a>
         </div>
         <span class="footer-copy">© 2026 Just Euchre. All rights reserved.</span>
       </div>

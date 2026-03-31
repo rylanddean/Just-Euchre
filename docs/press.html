@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Press — Just Euchre</title>
+  <meta name="description" content="Press coverage and articles about Just Euchre." />
+  <meta name="theme-color" content="#080B12" />
+  <link rel="icon" type="image/png" href="icon/icon.png" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080B12;
+      --surface:   #1A212C;
+      --pill:      #161C26;
+      --mint:      #52F6AA;
+      --red:       #FB595E;
+      --gold:      #FDD758;
+      --white:     #FFFFFF;
+      --muted:     #B8B8B8;
+      --subtle:    #8C8C8C;
+      --border:    #474747;
+      --radius:    14px;
+      --font:      -apple-system, system-ui, "Helvetica Neue", sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--white);
+      font-family: var(--font);
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .container {
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: block;
+      flex-shrink: 0;
+    }
+
+    .wordmark {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      color: var(--white);
+    }
+
+    .wordmark span { color: var(--mint); }
+
+    .btn-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 8px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--white);
+      cursor: pointer;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-pill:hover { opacity: 0.75; }
+
+    /* ── Page Header ── */
+    .page-header {
+      padding: 64px 0 56px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--mint);
+      margin-bottom: 14px;
+    }
+
+    .page-title {
+      font-size: clamp(32px, 5vw, 48px);
+      font-weight: 700;
+      letter-spacing: -1.2px;
+      line-height: 1.08;
+      margin-bottom: 16px;
+    }
+
+    .page-desc {
+      font-size: 17px;
+      color: var(--muted);
+      max-width: 520px;
+      line-height: 1.65;
+    }
+
+    /* ── Press contact ── */
+    .press-contact {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      font-size: 14px;
+      color: var(--muted);
+      margin-top: 32px;
+    }
+
+    .press-contact strong {
+      color: var(--white);
+      font-weight: 600;
+    }
+
+    .press-contact a {
+      color: var(--mint);
+      font-weight: 600;
+    }
+
+    /* ── Articles ── */
+    .articles-section {
+      padding: 64px 0;
+    }
+
+    .articles-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--subtle);
+      margin-bottom: 28px;
+    }
+
+    .article-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: start;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 28px;
+      transition: border-color 0.15s;
+      text-decoration: none;
+      color: inherit;
+      margin-bottom: 2px;
+    }
+
+    .article-card:hover {
+      border-color: var(--mint);
+    }
+
+    .article-card:last-child {
+      margin-bottom: 0;
+    }
+
+    .article-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--mint);
+      margin-bottom: 14px;
+    }
+
+    .article-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      line-height: 1.3;
+      margin-bottom: 10px;
+      color: var(--white);
+    }
+
+    .article-excerpt {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.65;
+      max-width: 600px;
+    }
+
+    .article-meta {
+      font-size: 12px;
+      color: var(--subtle);
+      margin-top: 16px;
+      font-weight: 500;
+    }
+
+    .article-arrow {
+      color: var(--subtle);
+      flex-shrink: 0;
+      margin-top: 4px;
+      transition: color 0.15s, transform 0.15s;
+    }
+
+    .article-card:hover .article-arrow {
+      color: var(--mint);
+      transform: translateX(3px);
+    }
+
+    /* ── Assets ── */
+    .assets-section {
+      padding: 0 0 80px;
+    }
+
+    .assets-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .asset-card {
+      background: var(--surface);
+      padding: 24px 22px;
+    }
+
+    .asset-icon {
+      font-size: 22px;
+      margin-bottom: 12px;
+    }
+
+    .asset-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      letter-spacing: -0.2px;
+    }
+
+    .asset-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0;
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .footer-brand { font-size: 15px; font-weight: 600; color: var(--white); }
+    .footer-suits { font-size: 16px; color: var(--subtle); letter-spacing: 2px; }
+    .footer-suits .red { color: var(--red); opacity: 0.7; }
+    .footer-copy { font-size: 13px; color: var(--subtle); }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      .article-card {
+        grid-template-columns: 1fr;
+      }
+
+      .article-arrow { display: none; }
+
+      .assets-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .footer-inner { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Nav ── -->
+  <nav>
+    <div class="container">
+      <div class="nav-inner">
+        <a href="index.html" class="nav-brand">
+          <img src="icon/icon.png" class="nav-icon" alt="Just Euchre icon" />
+          <span class="wordmark">Just <span>Euchre</span></span>
+        </a>
+        <div style="display:flex;align-items:center;gap:16px;">
+          <a href="press.html" style="font-size:14px;font-weight:600;color:var(--mint);">Press</a>
+          <a href="https://apps.apple.com/ca/app/just-euchre/id6761267534" class="btn-pill">App Store</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Page Header ── -->
+  <div class="page-header">
+    <div class="container">
+      <div class="section-label">Press</div>
+      <h1 class="page-title">Just Euchre Newsroom</h1>
+      <p class="page-desc">Articles, coverage, and resources for journalists and writers. Free daily card game for iOS.</p>
+      <div class="press-contact">
+        Press inquiries: <a href="mailto:ryland.w.dean.dev@gmail.com">ryland.w.dean.dev@gmail.com</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Articles ── -->
+  <section class="articles-section">
+    <div class="container">
+      <div class="articles-label">Articles</div>
+
+      <a href="press-launch.html" class="article-card">
+        <div>
+          <div class="article-tag">Launch</div>
+          <div class="article-title">Just Euchre Is a Daily Card Game That Knows What It Is</div>
+          <p class="article-excerpt">No accounts, no ads, one game a day. A closer look at the app that strips Euchre down to what it's always been — a great card game — and gets out of the way.</p>
+          <div class="article-meta">March 2026 &nbsp;·&nbsp; Just Euchre Team</div>
+        </div>
+        <svg class="article-arrow" width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M4 10H16M10 4L16 10L10 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ── Press Assets ── -->
+  <section class="assets-section">
+    <div class="container" style="padding-top:56px;">
+      <div class="section-label" style="margin-bottom:28px;">Press Assets</div>
+
+      <div class="assets-grid">
+
+        <div class="asset-card">
+          <div class="asset-icon">🖼️</div>
+          <div class="asset-title">App Icon</div>
+          <p class="asset-desc">Available in 1024×1024 and smaller sizes. Dark background, no transparency.</p>
+        </div>
+
+        <div class="asset-card">
+          <div class="asset-icon">📱</div>
+          <div class="asset-title">Screenshots</div>
+          <p class="asset-desc">Game screen, card packs, emoji picker, and partner chat. iPhone 15 Pro framing.</p>
+        </div>
+
+        <div class="asset-card">
+          <div class="asset-icon">📄</div>
+          <div class="asset-title">App Details</div>
+          <p class="asset-desc">Name: Just Euchre &nbsp;·&nbsp; Platform: iOS &nbsp;·&nbsp; Price: Free &nbsp;·&nbsp; Category: Card Games</p>
+        </div>
+
+      </div>
+
+      <p style="font-size:13px;color:var(--subtle);margin-top:20px;">
+        To request press assets, contact <a href="mailto:ryland.w.dean.dev@gmail.com" style="color:var(--mint);font-weight:600;">ryland.w.dean.dev@gmail.com</a>.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Footer ── -->
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <span class="footer-brand">Just Euchre</span>
+        <span class="footer-suits">♠ <span class="red">♥</span> <span class="red">♦</span> ♣</span>
+        <div style="display:flex;gap:20px;">
+          <a href="privacy.html" style="font-size:13px;color:var(--subtle);transition:color 0.15s;">Privacy</a>
+          <a href="support.html" style="font-size:13px;color:var(--subtle);transition:color 0.15s;">Support</a>
+          <a href="press.html" style="font-size:13px;color:var(--subtle);transition:color 0.15s;">Press</a>
+        </div>
+        <span class="footer-copy">© 2026 Just Euchre. All rights reserved.</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
