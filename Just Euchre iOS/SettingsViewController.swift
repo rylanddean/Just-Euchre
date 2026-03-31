@@ -115,13 +115,6 @@ final class SettingsViewController: UIViewController {
         contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("Support"))
 
-        let coffeeRow = SettingsRowView(surface: surface, border: border)
-        coffeeRow.configure(title: "Buy me a coffee", subtitle: "$2 in-app purchase", icon: "cup.and.saucer.fill", showsChevron: false)
-        coffeeRow.onTap = { [weak self] in
-            self?.purchaseCoffee()
-        }
-        contentStack.addArrangedSubview(coffeeRow)
-
         let feedbackRow = SettingsRowView(surface: surface, border: border)
         feedbackRow.configure(title: "Feedback", subtitle: "Send a note", icon: "envelope.fill", showsChevron: true)
         feedbackRow.onTap = { [weak self] in
@@ -228,24 +221,6 @@ final class SettingsViewController: UIViewController {
         }
         sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         present(sheet, animated: true)
-    }
-
-    private func purchaseCoffee() {
-        Task { @MainActor in
-            do {
-                let result = try await CoffeePurchase.purchase()
-                switch result {
-                case .success:
-                    showToast("Thanks for the coffee.")
-                case .cancelled:
-                    break
-                case .notConfigured:
-                    showToast("Coffee purchase isn’t configured yet.")
-                }
-            } catch {
-                showToast("Purchase failed.")
-            }
-        }
     }
 
     private func showToast(_ text: String) {
@@ -382,33 +357,6 @@ final class SettingsViewController: UIViewController {
     }
 }
 
-private enum CoffeePurchase {
-    enum Result {
-        case success
-        case cancelled
-        case notConfigured
-    }
-
-    // Set this to your App Store Connect product id when ready.
-    private static let productId = "justeuchre.coffee_2"
-
-    static func purchase() async throws -> Result {
-        let products = try await Product.products(for: [productId])
-        guard let product = products.first else { return .notConfigured }
-
-        let result = try await product.purchase()
-        switch result {
-        case .success:
-            return .success
-        case .userCancelled:
-            return .cancelled
-        case .pending:
-            return .cancelled
-        @unknown default:
-            return .cancelled
-        }
-    }
-}
 
 // MARK: - Toggle Row
 
