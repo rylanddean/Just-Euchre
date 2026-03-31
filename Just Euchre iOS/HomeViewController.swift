@@ -14,6 +14,7 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
     private let background = UIColor(red: 8/255, green: 11/255, blue: 18/255, alpha: 1)
 
     private let titleLabel = UILabel()
+    private let todayLabel = UILabel()
 
     // Streak row: win streak (flame) + completed streak (checkmark)
     private let streakRow = UIStackView()
@@ -29,8 +30,10 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
     private let primaryCard = HomeCardView(title: "New Game", subtitle: "Today's game", icon: "sparkles")
     private let shareCard = HomeCardView(title: "Share", subtitle: "Export today's result", icon: "square.and.arrow.up")
 
-    private let nudgeLabel = UILabel()
-    private var historyTitleTopToNudge: NSLayoutConstraint?
+    private let factStack = UIStackView()
+    private let factHeaderLabel = UILabel()
+    private let factTextLabel = UILabel()
+    private var historyTitleTopToFact: NSLayoutConstraint?
     private var historyTitleTopToCards: NSLayoutConstraint?
 
     private let historyTitle = UILabel()
@@ -50,13 +53,15 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
         NotificationCenter.default.addObserver(self, selector: #selector(historyDidChange), name: GameHistoryStore.didChangeNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(dailyDidChange), name: DailyGameStore.didChangeNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(gameCenterAuthDidChange), name: GameCenterManager.authDidChangeNotification, object: nil)
+
+        refreshDailyContent()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         primaryCard.resetConfirmation()
         reloadHistory()
-        applyDailyState()
+        refreshDailyContent()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -75,6 +80,13 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
         titleLabel.textColor = .white
         titleLabel.font = UIFont.systemFont(ofSize: 22, weight: .semibold)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let todayFormatter = DateFormatter()
+        todayFormatter.dateFormat = "EEEE, MMMM d"
+        todayLabel.text = todayFormatter.string(from: Date())
+        todayLabel.textColor = UIColor(white: 0.45, alpha: 1)
+        todayLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+        todayLabel.translatesAutoresizingMaskIntoConstraints = false
 
         // Win streak (flame icon)
         let fireColor = UIColor(red: 1.0, green: 0.45, blue: 0.15, alpha: 1)
@@ -143,16 +155,28 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
         cardsRow.addArrangedSubview(shareCard)
 
         cardsScroll.addSubview(cardsRow)
-        nudgeLabel.numberOfLines = 0
-        nudgeLabel.textColor = UIColor(white: 0.62, alpha: 1)
-        nudgeLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular)
-        nudgeLabel.isHidden = true
-        nudgeLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        factHeaderLabel.text = "USELESS FACT"
+        factHeaderLabel.textColor = UIColor(white: 0.45, alpha: 1)
+        factHeaderLabel.font = UIFont.systemFont(ofSize: 11, weight: .semibold)
+
+        factTextLabel.numberOfLines = 0
+        factTextLabel.textColor = UIColor(white: 0.62, alpha: 1)
+        factTextLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular)
+
+        factStack.axis = .vertical
+        factStack.alignment = .leading
+        factStack.spacing = 5
+        factStack.addArrangedSubview(factHeaderLabel)
+        factStack.addArrangedSubview(factTextLabel)
+        factStack.isHidden = true
+        factStack.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(titleLabel)
+        view.addSubview(todayLabel)
         view.addSubview(streakRow)
         view.addSubview(cardsScroll)
-        view.addSubview(nudgeLabel)
+        view.addSubview(factStack)
         view.addSubview(historyTitle)
         view.addSubview(tableView)
 
@@ -176,12 +200,15 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
             titleLabel.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: 18),
             titleLabel.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -18),
 
+            todayLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
+            todayLabel.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: 18),
+
             winStreakIcon.widthAnchor.constraint(equalToConstant: 32),
             winStreakIcon.heightAnchor.constraint(equalToConstant: 40),
             completedStreakIcon.widthAnchor.constraint(equalToConstant: 40),
             completedStreakIcon.heightAnchor.constraint(equalToConstant: 40),
 
-            streakRow.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10),
+            streakRow.topAnchor.constraint(equalTo: todayLabel.bottomAnchor, constant: 14),
             streakRow.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: 14),
 
             cardsScroll.topAnchor.constraint(equalTo: streakRow.bottomAnchor, constant: 18),
@@ -195,9 +222,9 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
             cardsRow.trailingAnchor.constraint(equalTo: cardsScroll.contentLayoutGuide.trailingAnchor, constant: -18),
             cardsRow.heightAnchor.constraint(equalTo: cardsScroll.frameLayoutGuide.heightAnchor),
 
-            nudgeLabel.topAnchor.constraint(equalTo: cardsScroll.bottomAnchor, constant: 18),
-            nudgeLabel.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: 18),
-            nudgeLabel.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -18),
+            factStack.topAnchor.constraint(equalTo: cardsScroll.bottomAnchor, constant: 18),
+            factStack.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: 18),
+            factStack.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -18),
 
             historyTitle.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: 18),
             historyTitle.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -18),
@@ -208,7 +235,7 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
             tableView.bottomAnchor.constraint(equalTo: safe.bottomAnchor),
         ])
 
-        historyTitleTopToNudge = historyTitle.topAnchor.constraint(equalTo: nudgeLabel.bottomAnchor, constant: 18)
+        historyTitleTopToFact = historyTitle.topAnchor.constraint(equalTo: factStack.bottomAnchor, constant: 18)
         historyTitleTopToCards = historyTitle.topAnchor.constraint(equalTo: cardsScroll.bottomAnchor, constant: 18)
         historyTitleTopToCards?.isActive = true
 
@@ -224,6 +251,7 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
 
     @objc private func didTapPrimaryCard() {
         guard !DailyGameStore.isCompletedToday() else { return }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         if DailyGameStore.canStartNewGameToday() {
             onStartNewGame?()
         } else {
@@ -232,6 +260,7 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
     }
 
     @objc private func didTapShareCard() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         let todayEntry = history.first(where: { Calendar.current.isDateInToday($0.date) })
         let image = ShareCardRenderer.render(
             winStreak: DailyGameStore.currentWinStreak,
@@ -255,6 +284,14 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
         GKAccessPoint.shared.isActive = GameCenterManager.shared.isAuthenticated && isViewLoaded && view.window != nil
     }
 
+    private func refreshDailyContent() {
+        factHeaderLabel.text = DailyContentStore.preferred.headerLabel
+        DailyContentStore.fetchIfNeeded { [weak self] content in
+            self?.factTextLabel.text = content
+            self?.applyDailyState()
+        }
+    }
+
     private func reloadHistory() {
         history = GameHistoryStore.entries()
         tableView.reloadData()
@@ -269,41 +306,46 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
             primaryCard.isUserInteractionEnabled = true
             primaryCard.alpha = 1
             shareCard.isHidden = true
-            setNudgeVisible(false)
+            shareCard.setAccent(nil)
+            setFactVisible(false)
         } else if DailyGameStore.isCompletedToday() {
             primaryCard.set(title: "All done!", subtitle: "Go enjoy the rest of your day", icon: "checkmark.circle.fill")
             primaryCard.isUserInteractionEnabled = false
             primaryCard.alpha = 0.55
 
             // Show share card with today's result
+            let mint = UIColor(red: 82/255, green: 246/255, blue: 170/255, alpha: 1)
+            let red  = UIColor(red: 251/255, green: 89/255,  blue: 94/255,  alpha: 1)
             let todayEntry = history.first(where: { Calendar.current.isDateInToday($0.date) })
             if let entry = todayEntry {
                 let subtitle = "\(entry.didWin ? "Win" : "Loss") · \(entry.yourScore)–\(entry.theirScore)"
                 shareCard.set(title: "Share", subtitle: subtitle, icon: "square.and.arrow.up")
+                shareCard.setAccent(entry.didWin ? mint : red)
             } else {
                 shareCard.set(title: "Share", subtitle: "Export today's result", icon: "square.and.arrow.up")
+                shareCard.setAccent(nil)
             }
             shareCard.isHidden = false
 
-            let nudge = UserDefaults.standard.string(forKey: "justeuchre.gameOverNudge")
-            nudgeLabel.text = nudge
-            setNudgeVisible(nudge != nil)
+            let hasFact = factTextLabel.text != nil && !(factTextLabel.text?.isEmpty ?? true)
+            setFactVisible(hasFact)
         } else {
             primaryCard.set(title: "Resume", subtitle: "Resume today's game", icon: "arrow.right")
             primaryCard.isUserInteractionEnabled = true
             primaryCard.alpha = 1
             shareCard.isHidden = true
-            setNudgeVisible(false)
+            shareCard.setAccent(nil)
+            setFactVisible(false)
         }
     }
 
-    private func setNudgeVisible(_ visible: Bool) {
-        nudgeLabel.isHidden = !visible
+    private func setFactVisible(_ visible: Bool) {
+        factStack.isHidden = !visible
         if visible {
             historyTitleTopToCards?.isActive = false
-            historyTitleTopToNudge?.isActive = true
+            historyTitleTopToFact?.isActive = true
         } else {
-            historyTitleTopToNudge?.isActive = false
+            historyTitleTopToFact?.isActive = false
             historyTitleTopToCards?.isActive = true
         }
     }
@@ -317,15 +359,44 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: HistoryCell.reuseIdentifier, for: indexPath) as! HistoryCell
         if history.isEmpty {
-            cell.configure(dateText: nil, resultText: "Play a game to start a history.", scoreText: "")
+            cell.configure(dateText: nil, resultText: "Play a game to start a history.", scoreText: "", badges: [])
         } else {
             let entry = history[indexPath.row]
             let dateText = dateFormatter.string(from: entry.date)
             let resultText = entry.didWin ? "Win" : "Loss"
             let scoreText = "\(entry.yourScore)–\(entry.theirScore)"
-            cell.configure(dateText: dateText, resultText: resultText, scoreText: scoreText)
+            cell.configure(dateText: dateText, resultText: resultText, scoreText: scoreText, badges: historyBadges(for: entry))
         }
         return cell
+    }
+
+    private func historyBadges(for entry: GameHistoryEntry) -> [(icon: String, color: UIColor)] {
+        let gold = UIColor(red: 253/255, green: 215/255, blue: 88/255, alpha: 1)
+        let mint = UIColor(red: 82/255, green: 246/255, blue: 170/255, alpha: 1)
+        let red  = UIColor(red: 251/255, green: 89/255,  blue: 94/255,  alpha: 1)
+        let dim  = UIColor(white: 0.65, alpha: 1)
+
+        var result: [(String, UIColor)] = []
+
+        if entry.yourScore == 10 && entry.theirScore == 0 {
+            result.append(("star.fill", gold))
+        } else if entry.didWin && entry.theirScore == 0 {
+            result.append(("lock.fill", dim))
+        }
+
+        if entry.didWin && entry.wasTrailing {
+            result.append(("arrow.uturn.up.circle.fill", mint))
+        }
+
+        if entry.wentToNineNine {
+            result.append(("bolt.fill", dim))
+        }
+
+        if !entry.didWin && entry.yourScore == 9 {
+            result.append(("heart.slash.fill", red))
+        }
+
+        return Array(result.prefix(2))
     }
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
@@ -401,6 +472,18 @@ private final class HomeCardView: UIControl {
         subtitleLabel.text = subtitle
     }
 
+    func setAccent(_ color: UIColor?) {
+        if let color {
+            layer.borderWidth = 1.5
+            layer.borderColor = color.withAlphaComponent(0.45).cgColor
+            iconView.tintColor = color.withAlphaComponent(0.9)
+        } else {
+            layer.borderWidth = 0
+            layer.borderColor = nil
+            iconView.tintColor = UIColor(white: 1, alpha: 0.65)
+        }
+    }
+
     func resetConfirmation() {
         confirmed = false
         transform = .identity
@@ -420,6 +503,7 @@ private final class HistoryCell: UITableViewCell {
     private let resultLabel = UILabel()
     private let scoreLabel = UILabel()
     private let resultStack = UIStackView()
+    private let badgeStack = UIStackView()
     private var dateColumnWidth: NSLayoutConstraint?
     private var resultLeadingToDate: NSLayoutConstraint?
     private var resultLeadingToEdge: NSLayoutConstraint?
@@ -461,6 +545,12 @@ private final class HistoryCell: UITableViewCell {
         resultLeadingToDate = resultStack.leadingAnchor.constraint(equalTo: monthLabel.trailingAnchor, constant: 16)
         resultLeadingToEdge = resultStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor)
 
+        badgeStack.axis = .horizontal
+        badgeStack.alignment = .center
+        badgeStack.spacing = 6
+        badgeStack.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(badgeStack)
+
         NSLayoutConstraint.activate([
             // Month label — upper half of date column
             monthLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
@@ -474,8 +564,12 @@ private final class HistoryCell: UITableViewCell {
 
             // Result+score stack — top aligned with month label
             resultLeadingToDate!,
-            resultStack.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor),
+            resultStack.trailingAnchor.constraint(lessThanOrEqualTo: badgeStack.leadingAnchor, constant: -8),
             resultStack.topAnchor.constraint(equalTo: monthLabel.topAnchor),
+
+            // Badge stack — trailing edge, centered
+            badgeStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            badgeStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
         ])
 
         resultLeadingToEdge?.isActive = false
@@ -483,7 +577,7 @@ private final class HistoryCell: UITableViewCell {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func configure(dateText: String?, resultText: String, scoreText: String) {
+    func configure(dateText: String?, resultText: String, scoreText: String, badges: [(icon: String, color: UIColor)]) {
         let parts = dateText?.split(separator: " ", maxSplits: 1) ?? []
         monthLabel.text = parts.count > 0 ? String(parts[0]).uppercased() : ""
         dayLabel.text = parts.count > 1 ? String(parts[1]) : ""
@@ -504,6 +598,20 @@ private final class HistoryCell: UITableViewCell {
             resultLeadingToDate?.isActive = false
             resultLeadingToEdge?.isActive = true
         }
+
+        badgeStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        let iconConfig = UIImage.SymbolConfiguration(pointSize: 13, weight: .medium)
+        for (icon, color) in badges {
+            let img = UIImageView()
+            img.image = UIImage(systemName: icon, withConfiguration: iconConfig)
+            img.tintColor = color
+            img.contentMode = .scaleAspectFit
+            img.translatesAutoresizingMaskIntoConstraints = false
+            img.widthAnchor.constraint(equalToConstant: 16).isActive = true
+            img.heightAnchor.constraint(equalToConstant: 16).isActive = true
+            badgeStack.addArrangedSubview(img)
+        }
+        badgeStack.isHidden = badges.isEmpty
     }
 }
 

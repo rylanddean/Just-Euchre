@@ -43,6 +43,7 @@ final class GameViewController: UIViewController {
     private var game = EuchreGame()
     private var selectedDiscardCard: EuchreGame.Card?
     private var didRecordOutcome = false
+    private var didFireGameOverHaptic = false
     private var gameOverNudge: String?
     private var hasInitializedGame = false
 
@@ -138,6 +139,7 @@ final class GameViewController: UIViewController {
 
         selectedDiscardCard = nil
         didRecordOutcome = false
+        didFireGameOverHaptic = false
         gameOverNudge = nil
         hasInitializedGame = true
 
@@ -523,10 +525,13 @@ final class GameViewController: UIViewController {
 
         // Status
         if game.winningTeam != nil {
+            if !didFireGameOverHaptic {
+                didFireGameOverHaptic = true
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(game.winningTeam == 0 ? .success : .warning)
+            }
             if gameOverNudge == nil {
-                let nudge = OnDeviceNudgeGenerator.nextNudge()
-                gameOverNudge = nudge
-                UserDefaults.standard.set(nudge, forKey: "justeuchre.gameOverNudge")
+                gameOverNudge = OnDeviceNudgeGenerator.nextNudge()
             }
             statusLabel.text = game.statusText
             gameOverLabel.text = gameOverNudge
@@ -817,6 +822,7 @@ final class GameViewController: UIViewController {
                 guard let self else { return }
                 guard let card = self.selectedDiscardCard else { return }
                 self.selectedDiscardCard = nil
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 self.game.humanPlayCard(card)
             }, for: .touchUpInside)
             actionRow.addArrangedSubview(discard)
@@ -853,22 +859,29 @@ final class GameViewController: UIViewController {
     private func performHumanAction(_ action: EuchreGame.HumanButton) {
         switch action.kind {
         case .pass:
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
             game.humanPass()
         case .orderUp:
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             game.humanOrderUp(alone: game.aloneToggleOn)
         case .callSuit(let suit):
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             game.humanCallSuit(suit, alone: game.aloneToggleOn)
         case .autoDiscard:
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
             game.humanAutoDiscard()
         case .newHand:
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
             game.startNextHand()
         case .newGame:
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
             game.startNewGame()
         }
     }
 
     @objc private func didToggleAlone() {
         game.aloneToggleOn.toggle()
+        UIImpactFeedbackGenerator(style: game.aloneToggleOn ? .medium : .light).impactOccurred()
         render()
     }
 
@@ -881,6 +894,7 @@ final class GameViewController: UIViewController {
             return
         }
         cancelSuggestion()
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         // Capture the card view's screen position so we can animate it flying to the table.
         if let cv = handCardViews.first(where: { $0.card == card }) {
             pendingPlaySourceRect = cv.convert(cv.bounds, to: tableContainer)
@@ -1115,6 +1129,9 @@ final class GameViewController: UIViewController {
     }
 
     private func showBanner(_ text: String) {
+        let style: UIImpactFeedbackGenerator.FeedbackStyle = text == "March!" ? .heavy : .medium
+        UIImpactFeedbackGenerator(style: style).impactOccurred()
+
         bannerLabel.text = text
         bannerView.transform = CGAffineTransform(scaleX: 0.82, y: 0.82)
         bannerView.alpha = 0
