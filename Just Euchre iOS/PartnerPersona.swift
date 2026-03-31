@@ -1270,10 +1270,20 @@ extension PartnerPersona {
 
     static let all: [PartnerPersona] = [rex, eunice, chad, maren, donnie, dale, val, bianca, brock, mae]
 
+    private static let lastUsedKey = "justeuchre.persona.lastUsed"
+
     static func next() -> PartnerPersona {
         let pool = all
         let idx = PersonaCycle.nextIndex(totalCount: UInt64(pool.count))
-        return pool[Int(idx)]
+        let persona = pool[Int(idx)]
+        UserDefaults.standard.set(persona.name, forKey: lastUsedKey)
+        return persona
+    }
+
+    /// Returns the persona selected for the current/most recent game, or nil if none has been chosen yet.
+    static func lastUsed() -> PartnerPersona? {
+        guard let name = UserDefaults.standard.string(forKey: lastUsedKey) else { return nil }
+        return all.first { $0.name == name }
     }
 }
 

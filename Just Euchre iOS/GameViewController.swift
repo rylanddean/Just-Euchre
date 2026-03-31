@@ -51,7 +51,6 @@ final class GameViewController: UIViewController {
     private var needsPartnerIntro = false
     private let partnerBubble = PartnerChatBubbleView()
     private var partnerBubbleTimer: Timer?
-    private var isPartnerTalking = false
     // Trigger deduplication: track last hand serial and scores we fired dialog for
     private var lastDialogHandSerial = -1
     private var lastDialogScores: [Int] = [-1, -1]
@@ -355,6 +354,12 @@ final class GameViewController: UIViewController {
         game.applyPersistedState(state)
         game.humanName = "You"
         hasInitializedGame = true
+
+        // Restore the partner persona so dialog keeps firing after an app relaunch.
+        if let persona = PartnerPersona.lastUsed() {
+            partnerPersona = persona
+            seatEmojis[2] = persona.emoji
+        }
     }
 
     private func buildTable() {
@@ -479,7 +484,9 @@ final class GameViewController: UIViewController {
         // Status
         if game.winningTeam != nil {
             if gameOverNudge == nil {
-                gameOverNudge = OnDeviceNudgeGenerator.nextNudge()
+                let nudge = OnDeviceNudgeGenerator.nextNudge()
+                gameOverNudge = nudge
+                UserDefaults.standard.set(nudge, forKey: "justeuchre.gameOverNudge")
             }
             statusLabel.text = game.statusText
             gameOverLabel.text = gameOverNudge
@@ -761,10 +768,6 @@ final class GameViewController: UIViewController {
     private func rebuildActions() {
         actionRow.arrangedSubviews.forEach { actionRow.removeArrangedSubview($0); $0.removeFromSuperview() }
 
-        // While the partner is speaking, hide action buttons so the player
-        // naturally pauses to read the dialog before proceeding.
-        if isPartnerTalking { return }
-
         if game.isAwaitingHumanDiscard {
             let discard = makePillButton(title: "Discard")
             let canDiscard = (selectedDiscardCard != nil)
@@ -993,11 +996,6 @@ final class GameViewController: UIViewController {
         partnerBubbleTimer = nil
         guard !text.isEmpty else { return }
 
-        // Suppress action buttons immediately — before the delay fires —
-        // so the Deal/New Game button never briefly appears then disappears.
-        isPartnerTalking = true
-        rebuildActions()
-
         let show = { [weak self] in
             guard let self else { return }
             self.positionPartnerBubble(text: text)
@@ -1020,9 +1018,6 @@ final class GameViewController: UIViewController {
                 UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseIn]) {
                     self?.partnerBubble.alpha = 0
                 }
-                // Restore action buttons once bubble fades
-                self?.isPartnerTalking = false
-                self?.rebuildActions()
             }
         }
 
@@ -1037,8 +1032,6 @@ final class GameViewController: UIViewController {
         partnerBubbleTimer?.invalidate()
         partnerBubbleTimer = nil
         partnerBubble.alpha = 0
-        isPartnerTalking = false
-        rebuildActions()
     }
 
     // MARK: - Euchre / March Banner
@@ -2242,7 +2235,7 @@ private final class EuchreGame {
         // handOver is not gated by currentTurnPlayer — there's no active turn.
         if case .handOver = phase {
             if winningTeam != nil {
-                return [HumanButton(title: "New Game", kind: .newGame)]
+                return []
             }
             return [HumanButton(title: "Next Hand", kind: .newHand)]
         }

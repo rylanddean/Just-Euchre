@@ -81,7 +81,7 @@ final class SettingsViewController: UIViewController {
         contentStack.addArrangedSubview(suggestRow)
 
         let suggestSubtitleRow = SettingsRowView(surface: surface, border: border)
-        suggestSubtitleRow.configure(title: "How it works", subtitle: "Wiggles a card after 15s of thinking", icon: "info.circle", showsChevron: false)
+        suggestSubtitleRow.configure(title: "How it works", subtitle: "Wiggles a card after 10s of thinking", icon: "info.circle", showsChevron: false)
         suggestSubtitleRow.isUserInteractionEnabled = false
         suggestSubtitleRow.alpha = 0.7
         contentStack.addArrangedSubview(suggestSubtitleRow)
