@@ -29,6 +29,10 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
     private let primaryCard = HomeCardView(title: "New Game", subtitle: "Today's game", icon: "sparkles")
     private let shareCard = HomeCardView(title: "Share", subtitle: "Export today's result", icon: "square.and.arrow.up")
 
+    private let nudgeLabel = UILabel()
+    private var historyTitleTopToNudge: NSLayoutConstraint?
+    private var historyTitleTopToCards: NSLayoutConstraint?
+
     private let historyTitle = UILabel()
     private let tableView = UITableView(frame: .zero, style: .plain)
     private var history: [GameHistoryEntry] = []
@@ -57,7 +61,7 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        GKAccessPoint.shared.location = .topLeading
+        GKAccessPoint.shared.location = .topTrailing
         GKAccessPoint.shared.isActive = GameCenterManager.shared.isAuthenticated
     }
 
@@ -139,9 +143,16 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
         cardsRow.addArrangedSubview(shareCard)
 
         cardsScroll.addSubview(cardsRow)
+        nudgeLabel.numberOfLines = 0
+        nudgeLabel.textColor = UIColor(white: 0.62, alpha: 1)
+        nudgeLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular)
+        nudgeLabel.isHidden = true
+        nudgeLabel.translatesAutoresizingMaskIntoConstraints = false
+
         view.addSubview(titleLabel)
         view.addSubview(streakRow)
         view.addSubview(cardsScroll)
+        view.addSubview(nudgeLabel)
         view.addSubview(historyTitle)
         view.addSubview(tableView)
 
@@ -184,7 +195,10 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
             cardsRow.trailingAnchor.constraint(equalTo: cardsScroll.contentLayoutGuide.trailingAnchor, constant: -18),
             cardsRow.heightAnchor.constraint(equalTo: cardsScroll.frameLayoutGuide.heightAnchor),
 
-            historyTitle.topAnchor.constraint(equalTo: cardsScroll.bottomAnchor, constant: 18),
+            nudgeLabel.topAnchor.constraint(equalTo: cardsScroll.bottomAnchor, constant: 18),
+            nudgeLabel.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: 18),
+            nudgeLabel.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -18),
+
             historyTitle.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: 18),
             historyTitle.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -18),
 
@@ -193,6 +207,10 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
             tableView.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -18),
             tableView.bottomAnchor.constraint(equalTo: safe.bottomAnchor),
         ])
+
+        historyTitleTopToNudge = historyTitle.topAnchor.constraint(equalTo: nudgeLabel.bottomAnchor, constant: 18)
+        historyTitleTopToCards = historyTitle.topAnchor.constraint(equalTo: cardsScroll.bottomAnchor, constant: 18)
+        historyTitleTopToCards?.isActive = true
 
         // Card sizing (Offsuit-like big rounded tiles)
         primaryCard.translatesAutoresizingMaskIntoConstraints = false
@@ -251,6 +269,7 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
             primaryCard.isUserInteractionEnabled = true
             primaryCard.alpha = 1
             shareCard.isHidden = true
+            setNudgeVisible(false)
         } else if DailyGameStore.isCompletedToday() {
             primaryCard.set(title: "All done!", subtitle: "Go enjoy the rest of your day", icon: "checkmark.circle.fill")
             primaryCard.isUserInteractionEnabled = false
@@ -265,11 +284,27 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
                 shareCard.set(title: "Share", subtitle: "Export today's result", icon: "square.and.arrow.up")
             }
             shareCard.isHidden = false
+
+            let nudge = UserDefaults.standard.string(forKey: "justeuchre.gameOverNudge")
+            nudgeLabel.text = nudge
+            setNudgeVisible(nudge != nil)
         } else {
             primaryCard.set(title: "Resume", subtitle: "Resume today's game", icon: "arrow.right")
             primaryCard.isUserInteractionEnabled = true
             primaryCard.alpha = 1
             shareCard.isHidden = true
+            setNudgeVisible(false)
+        }
+    }
+
+    private func setNudgeVisible(_ visible: Bool) {
+        nudgeLabel.isHidden = !visible
+        if visible {
+            historyTitleTopToCards?.isActive = false
+            historyTitleTopToNudge?.isActive = true
+        } else {
+            historyTitleTopToNudge?.isActive = false
+            historyTitleTopToCards?.isActive = true
         }
     }
 

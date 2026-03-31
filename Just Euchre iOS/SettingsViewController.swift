@@ -71,6 +71,16 @@ final class SettingsViewController: UIViewController {
     private func buildSections() {
         contentStack.arrangedSubviews.forEach { contentStack.removeArrangedSubview($0); $0.removeFromSuperview() }
 
+        // ── You ─────────────────────────────────────────────────────────────
+        contentStack.addArrangedSubview(sectionTitle("You"))
+        let avatarRow = AvatarPickerRowView(surface: surface, border: border)
+        avatarRow.configure(emoji: PlayerEmojiStore.emoji)
+        avatarRow.onTap = { [weak self, weak avatarRow] in
+            self?.showEmojiPicker(updating: avatarRow)
+        }
+        contentStack.addArrangedSubview(avatarRow)
+
+        contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("Gameplay"))
 
         let suggestRow = SettingsToggleRowView(surface: surface, border: border)
@@ -81,7 +91,7 @@ final class SettingsViewController: UIViewController {
         contentStack.addArrangedSubview(suggestRow)
 
         let suggestSubtitleRow = SettingsRowView(surface: surface, border: border)
-        suggestSubtitleRow.configure(title: "How it works", subtitle: "Wiggles a card after 15s of thinking", icon: "info.circle", showsChevron: false)
+        suggestSubtitleRow.configure(title: "How it works", subtitle: "Wiggles a card after 10s of thinking", icon: "info.circle", showsChevron: false)
         suggestSubtitleRow.isUserInteractionEnabled = false
         suggestSubtitleRow.alpha = 0.7
         contentStack.addArrangedSubview(suggestSubtitleRow)
@@ -107,20 +117,23 @@ final class SettingsViewController: UIViewController {
         contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("Card Packs"))
         let packsRow = SettingsRowView(surface: surface, border: border)
-        packsRow.configure(title: "Card packs", subtitle: "Coming soon", icon: "rectangle.stack.fill", showsChevron: false)
-        packsRow.isUserInteractionEnabled = false
-        packsRow.alpha = 0.85
+        packsRow.configure(title: "Card packs", subtitle: CardPackStore.selectedPack.name, icon: "rectangle.stack.fill", showsChevron: true)
+        packsRow.onTap = { [weak self, weak packsRow] in
+            let vc = CardPacksViewController()
+            vc.onPackSelected = { pack in
+                packsRow?.configure(title: "Card packs", subtitle: pack.name, icon: "rectangle.stack.fill", showsChevron: true)
+            }
+            vc.modalPresentationStyle = .pageSheet
+            if let sheet = vc.sheetPresentationController {
+                sheet.detents = [.large()]
+                sheet.prefersGrabberVisible = true
+            }
+            self?.present(vc, animated: true)
+        }
         contentStack.addArrangedSubview(packsRow)
 
         contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("Support"))
-
-        let coffeeRow = SettingsRowView(surface: surface, border: border)
-        coffeeRow.configure(title: "Buy me a coffee", subtitle: "$2 in-app purchase", icon: "cup.and.saucer.fill", showsChevron: false)
-        coffeeRow.onTap = { [weak self] in
-            self?.purchaseCoffee()
-        }
-        contentStack.addArrangedSubview(coffeeRow)
 
         let feedbackRow = SettingsRowView(surface: surface, border: border)
         feedbackRow.configure(title: "Feedback", subtitle: "Send a note", icon: "envelope.fill", showsChevron: true)
@@ -212,6 +225,7 @@ final class SettingsViewController: UIViewController {
         let links: [(String, URL)] = [
             ("Facebook", URL(string: "https://www.facebook.com/profile.php?id=61577539751873")!),
             ("Instagram", URL(string: "https://www.instagram.com/just_euchre/")!),
+            ("X (Twitter)", URL(string: "https://x.com/JustEuchre")!),
         ]
 
         let sheet = UIAlertController(title: "Socials", message: nil, preferredStyle: .actionSheet)
@@ -279,6 +293,22 @@ final class SettingsViewController: UIViewController {
         })
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         present(alert, animated: true)
+    }
+
+    private func showEmojiPicker(updating row: AvatarPickerRowView?) {
+        let picker = EmojiPickerViewController()
+        picker.currentEmoji = PlayerEmojiStore.emoji
+        picker.onSelect = { emoji in
+            PlayerEmojiStore.emoji = emoji
+            row?.configure(emoji: emoji)
+        }
+        picker.modalPresentationStyle = .pageSheet
+        if let sheet = picker.sheetPresentationController {
+            sheet.detents = [.medium()]
+            sheet.prefersGrabberVisible = true
+            sheet.prefersScrollingExpandsWhenScrolledToEdge = false
+        }
+        present(picker, animated: true)
     }
 
     private func showTimePicker() {
@@ -544,6 +574,101 @@ private final class SettingsRowView: UIControl {
         titleLabel.text = title
         subtitleLabel.text = subtitle
         chevron.isHidden = !showsChevron
+    }
+
+    @objc private func didTap() {
+        onTap?()
+    }
+}
+
+// MARK: - Avatar Picker Row
+
+/// A settings row that shows the player's current avatar emoji in a circle,
+/// with a "Your avatar" label and a chevron to open the emoji picker.
+final class AvatarPickerRowView: UIControl {
+
+    private let surface: UIColor
+    private let border: UIColor
+
+    private let circleView  = UIView()
+    private let emojiLabel  = UILabel()
+    private let titleLabel  = UILabel()
+    private let hintLabel   = UILabel()
+    private let chevron     = UIImageView(image: UIImage(systemName: "chevron.right"))
+
+    var onTap: (() -> Void)?
+
+    init(surface: UIColor, border: UIColor) {
+        self.surface = surface
+        self.border  = border
+        super.init(frame: .zero)
+
+        backgroundColor    = surface
+        layer.cornerRadius = 12
+
+        // Circle
+        circleView.backgroundColor  = UIColor(white: 0.12, alpha: 1)
+        circleView.layer.cornerRadius = 18
+        circleView.layer.borderWidth  = 1
+        circleView.layer.borderColor  = UIColor(white: 0.28, alpha: 1).cgColor
+
+        emojiLabel.font          = UIFont.systemFont(ofSize: 22)
+        emojiLabel.textAlignment = .center
+
+        circleView.addSubview(emojiLabel)
+        emojiLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            emojiLabel.centerXAnchor.constraint(equalTo: circleView.centerXAnchor),
+            emojiLabel.centerYAnchor.constraint(equalTo: circleView.centerYAnchor),
+        ])
+
+        titleLabel.text      = "Your avatar"
+        titleLabel.textColor = .white
+        titleLabel.font      = UIFont.systemFont(ofSize: 16, weight: .semibold)
+
+        hintLabel.text      = "Tap to change"
+        hintLabel.textColor = UIColor(white: 0.72, alpha: 1)
+        hintLabel.font      = UIFont.systemFont(ofSize: 12, weight: .medium)
+
+        chevron.tintColor    = UIColor(white: 0.45, alpha: 1)
+        chevron.contentMode  = .scaleAspectFit
+
+        let textStack = UIStackView(arrangedSubviews: [titleLabel, hintLabel])
+        textStack.axis      = .vertical
+        textStack.alignment = .leading
+        textStack.spacing   = 4
+
+        [circleView, textStack, chevron].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            $0.isUserInteractionEnabled = false
+            addSubview($0)
+        }
+
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 60),
+
+            circleView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+            circleView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            circleView.widthAnchor.constraint(equalToConstant: 36),
+            circleView.heightAnchor.constraint(equalToConstant: 36),
+
+            textStack.leadingAnchor.constraint(equalTo: circleView.trailingAnchor, constant: 12),
+            textStack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            textStack.trailingAnchor.constraint(lessThanOrEqualTo: chevron.leadingAnchor, constant: -12),
+
+            chevron.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -18),
+            chevron.centerYAnchor.constraint(equalTo: centerYAnchor),
+            chevron.widthAnchor.constraint(equalToConstant: 12),
+            chevron.heightAnchor.constraint(equalToConstant: 16),
+        ])
+
+        addTarget(self, action: #selector(didTap), for: .touchUpInside)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func configure(emoji: String) {
+        emojiLabel.text = emoji
     }
 
     @objc private func didTap() {
