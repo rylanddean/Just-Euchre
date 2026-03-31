@@ -113,9 +113,20 @@ final class GameViewController: UIViewController {
         render()
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        applyCurrentCardPack()
+    }
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         presentPartnerIntroIfNeeded()
+    }
+
+    private func applyCurrentCardPack() {
+        let pack = CardPackStore.selectedPack
+        let allCardViews: [CardView] = [upcardView, trickNorth, trickWest, trickEast, trickSouth] + handCardViews
+        allCardViews.forEach { $0.pack = pack }
     }
 
     func startNewGameFromMenu() {
@@ -132,7 +143,21 @@ final class GameViewController: UIViewController {
         // Pick a partner persona for this game.
         let persona = PartnerPersona.next()
         partnerPersona = persona
-        seatEmojis[2] = persona.emoji    // North badge emoji
+
+        // Player emoji (persisted via Settings)
+        seatEmojis[0] = PlayerEmojiStore.emoji
+
+        // Partner emoji (from persona)
+        seatEmojis[2] = persona.emoji
+
+        // Randomly assign distinct emojis to the West and East opponents.
+        var pool = EmojiPickerViewController.botEmojiPool.filter { $0 != persona.emoji }
+        pool.shuffle()
+        let westEmoji = pool.indices.contains(0) ? pool[0] : "🐯"
+        let eastEmoji = pool.indices.contains(1) ? pool[1] : "🦝"
+        seatEmojis[1] = westEmoji
+        seatEmojis[3] = eastEmoji
+        BotEmojiStore.save(west: westEmoji, east: eastEmoji)
 
         game = EuchreGame()
         game.humanName = "You"
@@ -302,6 +327,7 @@ final class GameViewController: UIViewController {
             let badge = PlayerBadgeView(theme: theme)
             badge.setName(game.playerNames[index])
             badge.setEmoji(seatEmojis[index])
+            badge.setIsPlayerTeam(index == 0 || index == 2)
             playerBadges.append(badge)
             headerRow.addArrangedSubview(badge)
         }
@@ -359,6 +385,13 @@ final class GameViewController: UIViewController {
         if let persona = PartnerPersona.lastUsed() {
             partnerPersona = persona
             seatEmojis[2] = persona.emoji
+        }
+
+        // Restore player emoji and opponent emojis.
+        seatEmojis[0] = PlayerEmojiStore.emoji
+        if let bots = BotEmojiStore.load() {
+            seatEmojis[1] = bots.west
+            seatEmojis[3] = bots.east
         }
     }
 
@@ -672,9 +705,9 @@ final class GameViewController: UIViewController {
                 let makerTeam   = makerIndex % 2
                 let makerTricks = game.tricksWonByTeam[makerTeam]
                 if makerTricks < 3 {
-                    trigger = .euchred
+                    trigger = (makerTeam == 0) ? .euchred : .weScored
                 } else if makerTricks == 5 {
-                    trigger = .marched
+                    trigger = (makerTeam == 0) ? .theyScored : .marched
                 } else if ourDelta > 0 {
                     trigger = .weScored
                 } else if theirDelta > 0 {
@@ -1461,11 +1494,13 @@ private final class PlayerBadgeView: UIView {
     private let crown = UIImageView()
     private let makerFlag = UILabel()
     private let initials = UILabel()
+    private let teamPip = UIView()
     private let nameLabel = UILabel()
     private let scoreLabel = UILabel()
     private let tricksLabel = UILabel()
     private var tricksHeight: NSLayoutConstraint?
     private var teamColor: UIColor = UIColor(white: 0.92, alpha: 1)
+    private var emoji: String?
     private var isDealer: Bool = false
     private var isMaker: Bool = false
     private var trumpSymbol: String?
@@ -1552,8 +1587,20 @@ private final class PlayerBadgeView: UIView {
             initials.centerYAnchor.constraint(equalTo: avatar.centerYAnchor),
         ])
 
+        teamPip.translatesAutoresizingMaskIntoConstraints = false
+        teamPip.widthAnchor.constraint(equalToConstant: 5).isActive = true
+        teamPip.heightAnchor.constraint(equalToConstant: 5).isActive = true
+        teamPip.layer.cornerRadius = 2.5
+        teamPip.backgroundColor = theme.accent
+        teamPip.isHidden = true
+
         nameLabel.textColor = theme.mutedText
         nameLabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+
+        let nameRow = UIStackView(arrangedSubviews: [teamPip, nameLabel])
+        nameRow.axis = .horizontal
+        nameRow.alignment = .center
+        nameRow.spacing = 4
 
         scoreLabel.textColor = .white
         scoreLabel.font = UIFont.monospacedDigitSystemFont(ofSize: 14, weight: .semibold)
@@ -1565,7 +1612,7 @@ private final class PlayerBadgeView: UIView {
         tricksHeight = tricksLabel.heightAnchor.constraint(equalToConstant: 14)
         tricksHeight?.isActive = true
 
-        let labels = UIStackView(arrangedSubviews: [nameLabel, scoreLabel, tricksLabel])
+        let labels = UIStackView(arrangedSubviews: [nameRow, scoreLabel, tricksLabel])
         labels.axis = .vertical
         labels.alignment = .center
         labels.spacing = 0
@@ -1581,12 +1628,14 @@ private final class PlayerBadgeView: UIView {
 
     func setName(_ name: String) {
         nameLabel.text = name
-        // Default fallback; prefer calling `setEmoji` from the controller.
-        initials.text = String(name.prefix(1))
+        if emoji == nil {
+            initials.text = String(name.prefix(1))
+        }
     }
 
-    func setEmoji(_ emoji: String) {
-        initials.text = emoji
+    func setEmoji(_ newEmoji: String) {
+        emoji = newEmoji
+        initials.text = newEmoji
     }
 
     func setScore(_ score: Int) {
@@ -1620,6 +1669,10 @@ private final class PlayerBadgeView: UIView {
         updateHeaderIconsLayout()
     }
 
+    func setIsPlayerTeam(_ isPlayerTeam: Bool) {
+        teamPip.isHidden = !isPlayerTeam
+    }
+
     func setMaker(_ isMaker: Bool, trumpSymbol: String?, trumpColor: UIColor?) {
         self.isMaker = isMaker
         self.trumpSymbol = trumpSymbol
@@ -1636,6 +1689,7 @@ private final class PlayerBadgeView: UIView {
         avatar.alpha = active ? 1.0 : 0.25
         crown.alpha = active ? 1.0 : 0.25
         makerFlag.alpha = active ? 1.0 : 0.25
+        teamPip.alpha = active ? 1.0 : 0.25
         nameLabel.alpha = active ? 1.0 : 0.25
         scoreLabel.alpha = active ? 1.0 : 0.25
         tricksLabel.alpha = active ? 1.0 : 0.25
@@ -1681,9 +1735,9 @@ private final class PlayerBadgeView: UIView {
 
 private final class CardView: UIControl {
     var theme = Theme() { didSet { updateTheme() } }
+    var pack: CardPack = CardPackStore.selectedPack { didSet { applyPack() } }
     private let valueLabel = UILabel()
     private let suitLabel = UILabel()
-    private let patternLabel = UILabel()
     private let markerLabel = UILabel()
 
     fileprivate(set) var card: EuchreGame.Card?
@@ -1703,7 +1757,7 @@ private final class CardView: UIControl {
     override init(frame: CGRect) {
         super.init(frame: frame)
 
-        backgroundColor = theme.cardBackground
+        backgroundColor = pack.cardBackground
         layer.cornerRadius = 16
         layer.shadowColor = UIColor.black.cgColor
         layer.shadowOpacity = 0.14
@@ -1739,19 +1793,6 @@ private final class CardView: UIControl {
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
 
-        patternLabel.text = "/////////"
-        patternLabel.textColor = UIColor(white: 0.7, alpha: 1)
-        patternLabel.font = UIFont.monospacedSystemFont(ofSize: 20, weight: .semibold)
-        patternLabel.transform = CGAffineTransform(rotationAngle: -.pi / 8)
-        patternLabel.isHidden = true
-        patternLabel.isUserInteractionEnabled = false
-        addSubview(patternLabel)
-        patternLabel.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            patternLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
-            patternLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
-        ])
-
         updateTheme()
         updateSelectable()
     }
@@ -1760,19 +1801,12 @@ private final class CardView: UIControl {
 
     func setCard(_ card: EuchreGame.Card, faceDown: Bool) {
         self.card = card
-        if faceDown {
-            valueLabel.isHidden = true
-            suitLabel.isHidden = true
-            patternLabel.isHidden = false
-            layer.borderWidth = 2
-            layer.borderColor = UIColor(white: 0.92, alpha: 1).cgColor
-        } else {
-            valueLabel.isHidden = false
-            suitLabel.isHidden = false
-            patternLabel.isHidden = true
+        valueLabel.isHidden = faceDown
+        suitLabel.isHidden = faceDown
+        if !faceDown {
             valueLabel.text = card.rank.short
             suitLabel.text = card.suit.symbol
-            let color = card.suit.isRed ? theme.accentRed : theme.ink
+            let color = card.suit.isRed ? pack.redSuitColor : pack.blackSuitColor
             valueLabel.textColor = color
             suitLabel.textColor = color
             layer.borderWidth = 0
@@ -1780,7 +1814,15 @@ private final class CardView: UIControl {
     }
 
     private func updateTheme() {
-        backgroundColor = theme.cardBackground
+        backgroundColor = pack.cardBackground
+    }
+
+    private func applyPack() {
+        backgroundColor = pack.cardBackground
+        guard let card = card, !valueLabel.isHidden else { return }
+        let color = card.suit.isRed ? pack.redSuitColor : pack.blackSuitColor
+        valueLabel.textColor = color
+        suitLabel.textColor = color
     }
 
     func setPlayerMarker(text: String) {

@@ -61,7 +61,7 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        GKAccessPoint.shared.location = .topLeading
+        GKAccessPoint.shared.location = .topTrailing
         GKAccessPoint.shared.isActive = GameCenterManager.shared.isAuthenticated
     }
 
