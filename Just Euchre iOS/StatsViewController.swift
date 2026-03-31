@@ -90,6 +90,96 @@ final class StatsViewController: UIViewController {
         cal.onNextMonth = { [weak self] in self?.navigateMonth(1) }
         contentStack.addArrangedSubview(cal)
 
+        // Records
+        contentStack.addArrangedSubview(sectionSpacer())
+        contentStack.addArrangedSubview(sectionTitle("Records"))
+
+        let allEntries = GameHistoryStore.entries()
+        let totalGames = allEntries.count
+        let totalWins = allEntries.filter { $0.didWin }.count
+        let totalLosses = totalGames - totalWins
+
+        let recordRow = StatRowView(surface: surface, border: border)
+        recordRow.configure(
+            title: "All-time record",
+            subtitle: totalGames > 0 ? "\(totalWins)W – \(totalLosses)L" : "No games yet",
+            icon: "trophy.fill"
+        )
+        contentStack.addArrangedSubview(recordRow)
+
+        let winRateRow = StatRowView(surface: surface, border: border)
+        if totalGames > 0 {
+            let rate = Int(round(Double(totalWins) / Double(totalGames) * 100))
+            winRateRow.configure(title: "Win rate", subtitle: "\(rate)%", icon: "percent")
+        } else {
+            winRateRow.configure(title: "Win rate", subtitle: "No games yet", icon: "percent")
+        }
+        contentStack.addArrangedSubview(winRateRow)
+
+        let shutouts = allEntries.filter { $0.didWin && $0.theirScore == 0 }.count
+        let shutoutRow = StatRowView(surface: surface, border: border)
+        shutoutRow.configure(
+            title: "Shutout wins",
+            subtitle: shutouts > 0 ? "\(shutouts)" : "None yet",
+            icon: "lock.fill"
+        )
+        contentStack.addArrangedSubview(shutoutRow)
+
+        let perfectGames = allEntries.filter { $0.yourScore == 10 && $0.theirScore == 0 }.count
+        let perfectRow = StatRowView(surface: surface, border: border)
+        perfectRow.configure(
+            title: "Perfect games (10–0)",
+            subtitle: perfectGames > 0 ? "\(perfectGames)" : "None yet",
+            icon: "star.fill"
+        )
+        contentStack.addArrangedSubview(perfectRow)
+
+        let heartbreakers = allEntries.filter { !$0.didWin && $0.yourScore == 9 }.count
+        let heartbreakerRow = StatRowView(surface: surface, border: border)
+        heartbreakerRow.configure(
+            title: "Heartbreaker losses",
+            subtitle: heartbreakers > 0 ? "\(heartbreakers)" : "None yet",
+            icon: "heart.slash.fill"
+        )
+        contentStack.addArrangedSubview(heartbreakerRow)
+
+        let comebacks = allEntries.filter { $0.didWin && $0.wasTrailing }.count
+        let comebackRow = StatRowView(surface: surface, border: border)
+        comebackRow.configure(
+            title: "Comeback wins",
+            subtitle: comebacks > 0 ? "\(comebacks)" : "None yet",
+            icon: "arrow.uturn.up.circle.fill"
+        )
+        contentStack.addArrangedSubview(comebackRow)
+
+        let nailbiters = allEntries.filter { $0.wentToNineNine }.count
+        let nailbiterRow = StatRowView(surface: surface, border: border)
+        nailbiterRow.configure(
+            title: "Went to 9–9",
+            subtitle: nailbiters > 0 ? "\(nailbiters)" : "None yet",
+            icon: "bolt.fill"
+        )
+        contentStack.addArrangedSubview(nailbiterRow)
+
+        let calendar = Calendar.current
+        let nowComps = calendar.dateComponents([.year, .month], from: Date())
+        let monthEntries = allEntries.filter {
+            let c = calendar.dateComponents([.year, .month], from: $0.date)
+            return c.year == nowComps.year && c.month == nowComps.month
+        }
+        let monthWins = monthEntries.filter { $0.didWin }.count
+        let monthLosses = monthEntries.count - monthWins
+        let monthFmt = DateFormatter()
+        monthFmt.dateFormat = "MMMM"
+        let monthName = monthFmt.string(from: Date())
+        let monthRow = StatRowView(surface: surface, border: border)
+        monthRow.configure(
+            title: "This month",
+            subtitle: monthEntries.isEmpty ? "No games yet" : "\(monthWins)W – \(monthLosses)L in \(monthName)",
+            icon: "calendar"
+        )
+        contentStack.addArrangedSubview(monthRow)
+
         // Streaks
         contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("Streaks"))

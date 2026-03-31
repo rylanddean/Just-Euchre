@@ -196,12 +196,17 @@ private final class EmojiCell: UICollectionViewCell {
 
 /// Centralises read/write of the player's chosen avatar emoji.
 enum PlayerEmojiStore {
+    static let didChangeNotification = Notification.Name("justeuchre.playerEmoji.didChange")
+
     private static let key     = "justeuchre.playerEmoji"
     private static let default_ = "🙂"
 
     static var emoji: String {
         get { UserDefaults.standard.string(forKey: key) ?? default_ }
-        set { UserDefaults.standard.set(newValue, forKey: key) }
+        set {
+            UserDefaults.standard.set(newValue, forKey: key)
+            NotificationCenter.default.post(name: didChangeNotification, object: nil)
+        }
     }
 }
 
