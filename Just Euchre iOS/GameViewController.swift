@@ -103,6 +103,7 @@ final class GameViewController: UIViewController {
 
         NotificationCenter.default.addObserver(self, selector: #selector(appDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(appWillResignActive), name: UIApplication.willResignActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(playerEmojiDidChange), name: PlayerEmojiStore.didChangeNotification, object: nil)
 
         restoreIfPossible()
         lastSeenHandSerial  = game.handSerial // don't stagger cards that were already dealt
@@ -348,7 +349,7 @@ final class GameViewController: UIViewController {
             return
         }
 
-        GameHistoryStore.addResult(yourScore: game.scores[0], theirScore: game.scores[1])
+        GameHistoryStore.addResult(yourScore: game.scores[0], theirScore: game.scores[1], wasTrailing: game.wasTrailing, wentToNineNine: game.wentToNineNine)
         DailyGameStore.markCompletedToday(didWin: didWin)
         GameStateStore.clear()
     }
@@ -359,6 +360,11 @@ final class GameViewController: UIViewController {
 
     @objc private func appWillResignActive() {
         persistIfNeeded()
+    }
+
+    @objc private func playerEmojiDidChange() {
+        seatEmojis[0] = PlayerEmojiStore.emoji
+        playerBadges.first?.setEmoji(seatEmojis[0])
     }
 
     private func persistIfNeeded() {
@@ -380,6 +386,7 @@ final class GameViewController: UIViewController {
         game.applyPersistedState(state)
         game.humanName = "You"
         hasInitializedGame = true
+        // wasTrailing / wentToNineNine are live on EuchreGame — no separate restore needed.
 
         // Restore the partner persona so dialog keeps firing after an app relaunch.
         if let persona = PartnerPersona.lastUsed() {
@@ -2033,6 +2040,8 @@ private final class EuchreGame {
     private(set) var dealer: Int = 0
     private(set) var scores: [Int] = [0, 0] // teams: 0 = (0,2), 1 = (1,3)
     private(set) var winningTeam: Int?
+    private(set) var wasTrailing = false
+    private(set) var wentToNineNine = false
 
     private(set) var upcard: Card?
     private(set) var trump: Card.Suit?
@@ -2251,6 +2260,8 @@ private final class EuchreGame {
         // Start with you acting first (left of dealer), so you immediately see Pass/Order Up.
         dealer = 3
         winningTeam = nil
+        wasTrailing = false
+        wentToNineNine = false
         startNewHand()
     }
 
@@ -2559,6 +2570,9 @@ private final class EuchreGame {
             _ = defendersTricks
             scores[defendersTeam] += 2
         }
+
+        if scores[1] > scores[0] { wasTrailing = true }
+        if scores[0] == 9 && scores[1] == 9 { wentToNineNine = true }
 
         if scores[0] >= 10 { winningTeam = 0 }
         if scores[1] >= 10 { winningTeam = 1 }
