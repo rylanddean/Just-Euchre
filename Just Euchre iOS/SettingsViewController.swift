@@ -193,8 +193,7 @@ final class SettingsViewController: UIViewController {
         let body = "Device: iOS\nApp: \(appVersionText())\n\nFeedback:\n"
         let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? subject
         let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? body
-        // No hardcoded recipient; let the user choose.
-        let urlString = "mailto:?subject=\(encodedSubject)&body=\(encodedBody)"
+        let urlString = "mailto:ryland.w.dean.dev@gmail.com?subject=\(encodedSubject)&body=\(encodedBody)"
         guard let url = URL(string: urlString) else { return }
         UIApplication.shared.open(url)
     }
@@ -210,15 +209,10 @@ final class SettingsViewController: UIViewController {
     }
 
     private func openSocials() {
-        // Add your links here when you’re ready.
-        let links: [(String, URL)] = []
-
-        guard !links.isEmpty else {
-            let alert = UIAlertController(title: "Socials", message: "No socials configured yet.", preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default))
-            present(alert, animated: true)
-            return
-        }
+        let links: [(String, URL)] = [
+            ("Facebook", URL(string: "https://www.facebook.com/profile.php?id=61577539751873")!),
+            ("Instagram", URL(string: "https://www.instagram.com/just_euchre/")!),
+        ]
 
         let sheet = UIAlertController(title: "Socials", message: nil, preferredStyle: .actionSheet)
         links.forEach { title, url in
