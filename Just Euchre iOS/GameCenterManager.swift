@@ -78,7 +78,7 @@ final class GameCenterManager: NSObject {
         static let winStreakThresholds = [3, 5, 10, 20]
 
         static func completedStreakID(for threshold: Int) -> String {
-            "streak_complete_\(threshold)"
+            "\(threshold)DayCompletedGameStreak"
         }
 
         static func winStreakID(for threshold: Int) -> String {
