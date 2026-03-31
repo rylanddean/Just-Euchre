@@ -97,6 +97,27 @@ final class SettingsViewController: UIViewController {
         contentStack.addArrangedSubview(suggestSubtitleRow)
 
         contentStack.addArrangedSubview(sectionSpacer())
+        contentStack.addArrangedSubview(sectionTitle("After Game"))
+
+        for type in [DailyContentType.none, .dadJoke, .uselessFact] {
+            let row = SettingsCheckRowView(surface: surface, border: border)
+            switch type {
+            case .none:
+                row.configure(title: "Nothing", icon: "minus.circle.fill")
+            case .dadJoke:
+                row.configure(title: "Dad joke", icon: "face.smiling.fill")
+            case .uselessFact:
+                row.configure(title: "Useless fact", icon: "lightbulb.fill")
+            }
+            row.setSelected(DailyContentStore.preferred == type)
+            row.onTap = { [weak self] in
+                DailyContentStore.preferred = type
+                self?.buildSections()
+            }
+            contentStack.addArrangedSubview(row)
+        }
+
+        contentStack.addArrangedSubview(sectionSpacer())
         contentStack.addArrangedSubview(sectionTitle("Notifications"))
 
         let toggleRow = SettingsToggleRowView(surface: surface, border: border)
@@ -579,6 +600,75 @@ private final class SettingsRowView: UIControl {
     @objc private func didTap() {
         onTap?()
     }
+}
+
+// MARK: - Check Row (radio-style selection)
+
+private final class SettingsCheckRowView: UIControl {
+    private let iconView    = UIImageView()
+    private let titleLabel  = UILabel()
+    private let checkView   = UIImageView()
+
+    private let mint = UIColor(red: 82/255, green: 246/255, blue: 170/255, alpha: 1)
+
+    var onTap: (() -> Void)?
+
+    init(surface: UIColor, border: UIColor) {
+        super.init(frame: .zero)
+        backgroundColor    = surface
+        layer.cornerRadius = 12
+
+        iconView.tintColor    = UIColor(white: 1, alpha: 0.65)
+        iconView.contentMode  = .scaleAspectFit
+
+        titleLabel.textColor = .white
+        titleLabel.font      = UIFont.systemFont(ofSize: 16, weight: .semibold)
+
+        checkView.contentMode = .scaleAspectFit
+        checkView.isUserInteractionEnabled = false
+
+        [iconView, titleLabel, checkView].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            $0.isUserInteractionEnabled = false
+            addSubview($0)
+        }
+
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 60),
+
+            iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18),
+            iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 22),
+            iconView.heightAnchor.constraint(equalToConstant: 22),
+
+            titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 12),
+            titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: checkView.leadingAnchor, constant: -12),
+
+            checkView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -18),
+            checkView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            checkView.widthAnchor.constraint(equalToConstant: 20),
+            checkView.heightAnchor.constraint(equalToConstant: 20),
+        ])
+
+        addTarget(self, action: #selector(didTap), for: .touchUpInside)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func configure(title: String, icon: String) {
+        iconView.image = UIImage(systemName: icon)
+        titleLabel.text = title
+    }
+
+    func setSelected(_ selected: Bool) {
+        let cfg = UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)
+        checkView.image = UIImage(systemName: selected ? "checkmark.circle.fill" : "circle",
+                                  withConfiguration: cfg)
+        checkView.tintColor = selected ? mint : UIColor(white: 0.3, alpha: 1)
+    }
+
+    @objc private func didTap() { onTap?() }
 }
 
 // MARK: - Avatar Picker Row
