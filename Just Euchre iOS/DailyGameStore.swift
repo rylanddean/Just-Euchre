@@ -112,6 +112,11 @@ enum DailyGameStore {
 
         NotificationCenter.default.post(name: didChangeNotification, object: nil)
         WidgetCenter.shared.reloadTimelines(ofKind: "StreakWidget")
+
+        GameCenterManager.shared.reportAchievements(
+            completedStreak: completedStreak,
+            winStreak: didWin ? winStreak : 0
+        )
     }
 
     /// Consecutive winning days. Returns 0 if the last win was more than 1 day ago (streak broken by incomplete or loss).

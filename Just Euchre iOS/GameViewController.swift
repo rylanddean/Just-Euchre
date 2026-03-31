@@ -46,8 +46,20 @@ final class GameViewController: UIViewController {
     private var gameOverNudge: String?
     private var hasInitializedGame = false
 
+    // Partner persona + table talk
+    private var partnerPersona: PartnerPersona?
+    private var needsPartnerIntro = false
+    private let partnerBubble = PartnerChatBubbleView()
+    private var partnerBubbleTimer: Timer?
+    private var isPartnerTalking = false
+    // Trigger deduplication: track last hand serial and scores we fired dialog for
+    private var lastDialogHandSerial = -1
+    private var lastDialogScores: [Int] = [-1, -1]
+    private var lastDialogWinningTeam: Int? = nil
+
     private var suggestionTimer: Timer?
     private weak var hintedCardView: CardView?
+    private var hintedActionTitle: String?
     private let hintPillView = UIView()
     private let hintLabel = UILabel()
 
@@ -102,6 +114,11 @@ final class GameViewController: UIViewController {
         render()
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        presentPartnerIntroIfNeeded()
+    }
+
     func startNewGameFromMenu() {
         loadViewIfNeeded()
 
@@ -113,15 +130,49 @@ final class GameViewController: UIViewController {
         gameOverNudge = nil
         hasInitializedGame = true
 
+        // Pick a partner persona for this game.
+        let persona = PartnerPersona.next()
+        partnerPersona = persona
+        seatEmojis[2] = persona.emoji    // North badge emoji
+
         game = EuchreGame()
         game.humanName = "You"
-        game.setBotNames(BotNameGenerator.nextBotNames(count: 3))
+        let botNames = BotNameGenerator.nextBotNames(count: 3)
+        // Override the North slot (index 1 of the 3 bots) with the persona's name.
+        let partnerBotIndex = 1
+        var adjustedNames = botNames
+        if adjustedNames.count > partnerBotIndex {
+            adjustedNames[partnerBotIndex] = persona.name
+        }
+        game.setBotNames(adjustedNames)
         game.onUpdate = { [weak self] in
             self?.render()
         }
         lastSeenHandSerial = -1 // ensure the first deal always staggers
 
-        game.startNewHand()
+        // Reset dialog tracking for the new game
+        lastDialogHandSerial = -1
+        lastDialogScores = [-1, -1]
+        lastDialogWinningTeam = nil
+        dismissPartnerBubble()
+
+        // Show partner intro — game.startNewHand() fires after the user dismisses it.
+        needsPartnerIntro = true
+    }
+
+    private func presentPartnerIntroIfNeeded() {
+        guard needsPartnerIntro, let persona = partnerPersona else { return }
+        needsPartnerIntro = false
+
+        // Rebuild header so the badge shows the persona name/emoji before the intro.
+        buildHeader()
+        render()
+
+        let intro = PartnerIntroViewController(persona: persona)
+        intro.onReady = { [weak self] in
+            self?.game.startNewHand()
+        }
+        present(intro, animated: false)
     }
 
     private func buildUI() {
@@ -181,6 +232,7 @@ final class GameViewController: UIViewController {
         view.addSubview(actionRow)
         view.addSubview(hintPillView)
         view.addSubview(handRow)
+        view.addSubview(partnerBubble)
 
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         headerRow.translatesAutoresizingMaskIntoConstraints = false
@@ -188,6 +240,7 @@ final class GameViewController: UIViewController {
         tableContainer.translatesAutoresizingMaskIntoConstraints = false
         actionRow.translatesAutoresizingMaskIntoConstraints = false
         handRow.translatesAutoresizingMaskIntoConstraints = false
+        partnerBubble.translatesAutoresizingMaskIntoConstraints = true
 
         statusContainer.addSubview(statusLabel)
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -231,12 +284,14 @@ final class GameViewController: UIViewController {
             hintPillView.bottomAnchor.constraint(equalTo: handRow.topAnchor, constant: -6),
             hintPillView.leadingAnchor.constraint(greaterThanOrEqualTo: safe.leadingAnchor, constant: 18),
             hintPillView.trailingAnchor.constraint(lessThanOrEqualTo: safe.trailingAnchor, constant: -18),
+
         ])
 
         buildHeader()
         buildTable()
         buildBanner()
         buildTrumpFlash()
+        buildPartnerBubble()
     }
 
     private func buildHeader() {
@@ -400,7 +455,9 @@ final class GameViewController: UIViewController {
             badge.setScore(game.scores[game.team(of: index)])
             badge.setTricks(game.tricksWonByTeam[team], visible: game.shouldShowTrickTally)
             badge.setTeam(team)
-            badge.setMaker(index == game.makerPlayerToDisplay, tint: game.trump.map(suitTint))
+            badge.setMaker(index == game.makerPlayerToDisplay,
+                           trumpSymbol: game.trump?.symbol,
+                           trumpColor: game.trump.map(suitTint))
             badge.setDealer(index == game.dealer)
             badge.setActive(game.isPlayerActive(index))
             badge.setTurn(index == game.currentTurnPlayer)
@@ -473,7 +530,12 @@ final class GameViewController: UIViewController {
             trumpBadge.isHidden = false
             trumpBadge.setText("Trump: \(trump.symbol)")
             // Flash the suit symbol the first time trump is set this hand.
-            if trump != lastFlashedTrump {
+            // Skip during dealerDiscard — the upcard is still on screen and would be
+            // obscured. Leave lastFlashedTrump unchanged so the flash fires as soon as
+            // play begins and the table is clear.
+            if trump != lastFlashedTrump, case .dealerDiscard = game.phase {
+                // deferred — do nothing
+            } else if trump != lastFlashedTrump {
                 lastFlashedTrump = trump
                 flashTrumpSuit(trump)
             }
@@ -558,9 +620,82 @@ final class GameViewController: UIViewController {
         rebuildHand(animateDeal: isNewDeal)
         rebuildActions()
 
+        // Partner dialog hooks
+        firePartnerDialogIfNeeded()
+
         manageSuggestionTimer()
         game.kickAIIfNeeded()
         persistIfNeeded()
+    }
+
+    // MARK: - Partner Dialog Firing
+
+    private func firePartnerDialogIfNeeded() {
+        guard let persona = partnerPersona else { return }
+
+        // ── Game-over reaction ────────────────────────────────────────────
+        if let winTeam = game.winningTeam, winTeam != lastDialogWinningTeam {
+            lastDialogWinningTeam = winTeam
+            let trigger: PartnerDialogTrigger = (winTeam == 0) ? .weWon : .weLost
+            let staticLine = persona.randomLine(for: trigger)
+            let ctx = PartnerDialogContext(
+                trigger: trigger,
+                ourScore: game.scores[0],
+                theirScore: game.scores[1],
+                partnerName: persona.name
+            )
+            PartnerDialogAIBridge.generate(for: persona, context: ctx) { [weak self] aiLine in
+                self?.showPartnerDialog(aiLine ?? staticLine, delay: 1.0)
+            }
+            return
+        }
+
+        // ── Hand-over reactions (score / euchre / march) ──────────────────
+        if case .handOver = game.phase, game.handSerial != lastDialogHandSerial {
+            lastDialogHandSerial = game.handSerial
+
+            let ourScore   = game.scores[0]
+            let theirScore = game.scores[1]
+            let ourDelta   = max(0, ourScore  - max(0, lastDialogScores[0]))
+            let theirDelta = max(0, theirScore - max(0, lastDialogScores[1]))
+            lastDialogScores = [ourScore, theirScore]
+
+            let trigger: PartnerDialogTrigger
+            if let makerIndex = game.makerPlayerToDisplay {
+                let makerTeam   = makerIndex % 2
+                let makerTricks = game.tricksWonByTeam[makerTeam]
+                if makerTricks < 3 {
+                    trigger = .euchred
+                } else if makerTricks == 5 {
+                    trigger = .marched
+                } else if ourDelta > 0 {
+                    trigger = .weScored
+                } else if theirDelta > 0 {
+                    trigger = .theyScored
+                } else {
+                    return
+                }
+            } else if ourDelta > 0 {
+                trigger = .weScored
+            } else if theirDelta > 0 {
+                trigger = .theyScored
+            } else {
+                return
+            }
+
+            let staticLine = persona.randomLine(for: trigger)
+            let ctx = PartnerDialogContext(
+                trigger: trigger,
+                ourScore: ourScore,
+                theirScore: theirScore,
+                partnerName: persona.name
+            )
+            PartnerDialogAIBridge.generate(for: persona, context: ctx) { [weak self] aiLine in
+                self?.showPartnerDialog(aiLine ?? staticLine, delay: 0.7)
+            }
+            return
+        }
+
     }
 
     private func trickView(for playerIndex: Int) -> CardView {
@@ -626,6 +761,10 @@ final class GameViewController: UIViewController {
     private func rebuildActions() {
         actionRow.arrangedSubviews.forEach { actionRow.removeArrangedSubview($0); $0.removeFromSuperview() }
 
+        // While the partner is speaking, hide action buttons so the player
+        // naturally pauses to read the dialog before proceeding.
+        if isPartnerTalking { return }
+
         if game.isAwaitingHumanDiscard {
             let discard = makePillButton(title: "Discard")
             let canDiscard = (selectedDiscardCard != nil)
@@ -661,6 +800,9 @@ final class GameViewController: UIViewController {
             button.addAction(UIAction { [weak self] _ in
                 self?.performHumanAction(action)
             }, for: .touchUpInside)
+            if let hint = hintedActionTitle, title == hint {
+                applyHintStyle(to: button)
+            }
             actionRow.addArrangedSubview(button)
         }
     }
@@ -767,7 +909,7 @@ final class GameViewController: UIViewController {
     // MARK: - Trump Suit Flash
 
     private func buildTrumpFlash() {
-        trumpFlashLabel.font = UIFont.systemFont(ofSize: 72, weight: .bold)
+        trumpFlashLabel.numberOfLines = 0
         trumpFlashLabel.textAlignment = .center
         trumpFlashLabel.alpha = 0
         trumpFlashLabel.isUserInteractionEnabled = false
@@ -780,24 +922,123 @@ final class GameViewController: UIViewController {
     }
 
     private func flashTrumpSuit(_ suit: EuchreGame.Card.Suit) {
-        trumpFlashLabel.text = suit.symbol
-        trumpFlashLabel.textColor = suit.isRed ? theme.accentRed : .white
+        let color: UIColor = suit.isRed ? theme.accentRed : .white
+        let wordAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 18, weight: .semibold),
+            .foregroundColor: color.withAlphaComponent(0.65),
+        ]
+        let symbolAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 64, weight: .bold),
+            .foregroundColor: color,
+        ]
+        let text = NSMutableAttributedString(string: "Trump\n", attributes: wordAttrs)
+        text.append(NSAttributedString(string: suit.symbol, attributes: symbolAttrs))
+        trumpFlashLabel.attributedText = text
         trumpFlashLabel.transform = CGAffineTransform(scaleX: 0.4, y: 0.4)
         trumpFlashLabel.alpha = 0
 
-        UIView.animate(withDuration: 0.14, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8, options: []) {
+        UIView.animate(withDuration: 0.18, delay: 0, usingSpringWithDamping: 0.65, initialSpringVelocity: 0.8, options: []) {
             self.trumpFlashLabel.transform = .identity
             self.trumpFlashLabel.alpha = 1
         } completion: { _ in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
-                UIView.animate(withDuration: 0.20, delay: 0, options: [.curveEaseIn]) {
-                    self?.trumpFlashLabel.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+                UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseIn]) {
+                    self?.trumpFlashLabel.transform = CGAffineTransform(scaleX: 1.1, y: 1.1)
                     self?.trumpFlashLabel.alpha = 0
                 } completion: { _ in
                     self?.trumpFlashLabel.transform = .identity
                 }
             }
         }
+    }
+
+    // MARK: - Partner Speech Bubble
+
+    private func buildPartnerBubble() {
+        partnerBubble.alpha = 0
+        partnerBubble.isUserInteractionEnabled = false
+        view.bringSubviewToFront(partnerBubble)
+    }
+
+    /// Positions the bubble frame below playerBadges[2] (the partner / North seat),
+    /// with an upward-pointing tail aimed at the partner's avatar.
+    private func positionPartnerBubble(text: String) {
+        guard playerBadges.count > 2 else { return }
+        let badge = playerBadges[2]
+
+        partnerBubble.setText(text)
+        let maxW: CGFloat = min(220, view.bounds.width - 40)
+        let fitted = partnerBubble.sizeThatFits(CGSize(width: maxW, height: 200))
+        let bubbleW = max(fitted.width, 80)
+        let bubbleH = fitted.height
+
+        // Center horizontally over the badge, clamped to safe margins
+        let badgeFrame = badge.convert(badge.bounds, to: view)
+        let cx = badgeFrame.midX
+        let rawX = cx - bubbleW / 2
+        let x = max(18, min(rawX, view.bounds.width - 18 - bubbleW))
+
+        // Place bubble just below the badge's bottom edge; tail tip points up into the badge
+        let y = badgeFrame.maxY + 4
+
+        partnerBubble.frame = CGRect(x: x, y: y, width: bubbleW, height: bubbleH)
+        partnerBubble.tailOffsetX = cx - x
+        partnerBubble.setNeedsDisplay()
+        partnerBubble.layoutIfNeeded()
+    }
+
+    /// Shows the partner speech bubble above their avatar for ~3 seconds then fades out.
+    func showPartnerDialog(_ text: String, delay: TimeInterval = 0) {
+        partnerBubbleTimer?.invalidate()
+        partnerBubbleTimer = nil
+        guard !text.isEmpty else { return }
+
+        // Suppress action buttons immediately — before the delay fires —
+        // so the Deal/New Game button never briefly appears then disappears.
+        isPartnerTalking = true
+        rebuildActions()
+
+        let show = { [weak self] in
+            guard let self else { return }
+            self.positionPartnerBubble(text: text)
+            self.view.bringSubviewToFront(self.partnerBubble)
+            self.partnerBubble.transform = CGAffineTransform(scaleX: 0.85, y: 0.85).translatedBy(x: 0, y: 6)
+
+            UIView.animate(
+                withDuration: 0.24,
+                delay: 0,
+                usingSpringWithDamping: 0.70,
+                initialSpringVelocity: 0.5,
+                options: []
+            ) {
+                self.partnerBubble.alpha = 1
+                self.partnerBubble.transform = .identity
+            }
+            // ~0.055s per character, clamped between 3.5s and 8s (longer lines linger longer)
+            let readTime = min(max(Double(text.count) * 0.055, 3.5), 8.0)
+            self.partnerBubbleTimer = Timer.scheduledTimer(withTimeInterval: readTime, repeats: false) { [weak self] _ in
+                UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseIn]) {
+                    self?.partnerBubble.alpha = 0
+                }
+                // Restore action buttons once bubble fades
+                self?.isPartnerTalking = false
+                self?.rebuildActions()
+            }
+        }
+
+        if delay > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: show)
+        } else {
+            show()
+        }
+    }
+
+    private func dismissPartnerBubble() {
+        partnerBubbleTimer?.invalidate()
+        partnerBubbleTimer = nil
+        partnerBubble.alpha = 0
+        isPartnerTalking = false
+        rebuildActions()
     }
 
     // MARK: - Euchre / March Banner
@@ -961,21 +1202,22 @@ final class GameViewController: UIViewController {
     }
 
     private func manageSuggestionTimer() {
-        let isHumanPlayTurn: Bool
-        if case .playing(let turn, _) = game.phase, turn == 0 {
-            isHumanPlayTurn = true
-        } else {
-            isHumanPlayTurn = false
+        let isHumanDecisionTurn: Bool
+        switch game.phase {
+        case .playing(let turn, _)        where turn == 0: isHumanDecisionTurn = true
+        case .makingTrumpRound1(let turn) where turn == 0: isHumanDecisionTurn = true
+        case .makingTrumpRound2(let turn) where turn == 0: isHumanDecisionTurn = true
+        default: isHumanDecisionTurn = false
         }
 
-        guard isFriendlySuggestionsEnabled && isHumanPlayTurn else {
+        guard isFriendlySuggestionsEnabled && isHumanDecisionTurn else {
             cancelSuggestion()
             return
         }
 
         // Only start if no timer is already running.
         guard suggestionTimer == nil else { return }
-        suggestionTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in
+        suggestionTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: false) { [weak self] _ in
             self?.showSuggestion()
         }
     }
@@ -987,12 +1229,28 @@ final class GameViewController: UIViewController {
             UIView.animate(withDuration: 0.2) { cv.isHinted = false }
             hintedCardView = nil
         }
+        if hintedActionTitle != nil {
+            hintedActionTitle = nil
+            rebuildActions()
+        }
         guard hintPillView.alpha > 0 else { return }
         UIView.animate(withDuration: 0.2) { self.hintPillView.alpha = 0 }
     }
 
     private func showSuggestion() {
         suggestionTimer = nil
+        switch game.phase {
+        case .playing(let turn, _) where turn == 0:
+            showCardSuggestion()
+        case .makingTrumpRound1(let turn) where turn == 0,
+             .makingTrumpRound2(let turn) where turn == 0:
+            showTrumpSuggestion()
+        default:
+            break
+        }
+    }
+
+    private func showCardSuggestion() {
         guard let suggestion = game.suggestedPlayForHuman() else { return }
 
         // Find the CardView matching the suggested card.
@@ -1000,9 +1258,7 @@ final class GameViewController: UIViewController {
         guard let idx = hand.firstIndex(of: suggestion.card), idx < handCardViews.count else { return }
         let cardView = handCardViews[idx]
 
-        // Haptic feedback.
-        let haptic = UIImpactFeedbackGenerator(style: .medium)
-        haptic.impactOccurred()
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
         // Wiggle the card, then lift it to mark it as the suggestion.
         let wiggle = CAKeyframeAnimation(keyPath: "transform.rotation.z")
@@ -1018,9 +1274,24 @@ final class GameViewController: UIViewController {
             self.hintedCardView = cardView
         }
 
-        // Show hint label.
         hintLabel.text = "💡 \(suggestion.reason)"
         UIView.animate(withDuration: 0.25) { self.hintPillView.alpha = 1 }
+    }
+
+    private func showTrumpSuggestion() {
+        guard let (title, reason) = game.suggestedTrumpAction() else { return }
+        hintedActionTitle = title
+        rebuildActions()    // rebuild so the highlighted button appears immediately
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        hintLabel.text = "💡 \(reason)"
+        UIView.animate(withDuration: 0.25) { self.hintPillView.alpha = 1 }
+    }
+
+    private func applyHintStyle(to button: UIButton) {
+        let gold = UIColor(red: 253/255, green: 215/255, blue: 88/255, alpha: 1)
+        button.backgroundColor = gold
+        button.setTitleColor(UIColor(white: 0.08, alpha: 1), for: .normal)
+        button.layer.borderColor = gold.withAlphaComponent(0.5).cgColor
     }
 }
 
@@ -1039,6 +1310,115 @@ private struct Theme {
     let pillBackground = UIColor(red: 22/255, green: 28/255, blue: 38/255, alpha: 1)
     let pillBorder = UIColor(white: 0.28, alpha: 1)
     let highlightBorder = UIColor(red: 82/255, green: 246/255, blue: 170/255, alpha: 0.65)
+}
+
+// MARK: - Partner Chat Bubble
+
+/// Rounded-rect speech bubble with an upward-pointing tail, drawn entirely in Core Graphics.
+/// The tail sits at the TOP of the view and points up toward the partner's avatar badge.
+/// Frame-based (translatesAutoresizingMaskIntoConstraints = true).
+private final class PartnerChatBubbleView: UIView {
+
+    static let tailHeight: CGFloat = 10
+    private static let cornerRadius: CGFloat = 13
+    private static let tailHalfWidth: CGFloat = 8
+
+    /// X position of the tail tip within the view's own coordinate space.
+    var tailOffsetX: CGFloat = 0 { didSet { setNeedsDisplay() } }
+
+    private let label = UILabel()
+
+    private let bubbleFill   = UIColor(red: 26/255, green: 33/255, blue: 44/255, alpha: 0.97)
+    private let bubbleBorder = UIColor(white: 0.35, alpha: 1)
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isOpaque = false
+        backgroundColor = .clear
+        isUserInteractionEnabled = false
+
+        label.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+        label.textColor = .white
+        label.textAlignment = .center
+        label.numberOfLines = 2
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+        // Label sits inside the body — below the tail at the top
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: topAnchor, constant: Self.tailHeight + 9),
+            label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -9),
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 13),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -13),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func setText(_ text: String) {
+        label.text = text
+    }
+
+    override func sizeThatFits(_ size: CGSize) -> CGSize {
+        let text = label.text ?? ""
+        let attrs: [NSAttributedString.Key: Any] = [.font: label.font as Any]
+        let maxTextW = max(size.width - 26, 1)
+        let textSize = (text as NSString).boundingRect(
+            with: CGSize(width: maxTextW, height: 200),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: attrs,
+            context: nil
+        ).size
+        return CGSize(width: ceil(textSize.width) + 26, height: ceil(textSize.height) + 18 + Self.tailHeight)
+    }
+
+    override func draw(_ rect: CGRect) {
+        guard let ctx = UIGraphicsGetCurrentContext() else { return }
+
+        let r = Self.cornerRadius
+        let tail = Self.tailHeight
+        let halfTail = Self.tailHalfWidth
+
+        // Body sits below the tail
+        let body = CGRect(x: 1, y: tail, width: rect.width - 2, height: rect.height - tail - 1)
+
+        // Clamp tail center X so it stays within the rounded corners
+        let tc = min(max(tailOffsetX, r + halfTail + 2), rect.width - r - halfTail - 2)
+        let tipY: CGFloat = 0  // tail tip points upward
+
+        // Build path: start at tail tip, go right-and-down into body, around body clockwise
+        let path = UIBezierPath()
+        // Top-left corner of body
+        path.move(to: CGPoint(x: body.minX + r, y: body.minY))
+        // Tail: left base → tip → right base
+        path.addLine(to: CGPoint(x: tc - halfTail, y: body.minY))
+        path.addLine(to: CGPoint(x: tc, y: tipY))
+        path.addLine(to: CGPoint(x: tc + halfTail, y: body.minY))
+        // Top-right corner
+        path.addLine(to: CGPoint(x: body.maxX - r, y: body.minY))
+        path.addArc(withCenter: CGPoint(x: body.maxX - r, y: body.minY + r),
+                    radius: r, startAngle: -.pi / 2, endAngle: 0, clockwise: true)
+        // Right edge → bottom-right corner
+        path.addLine(to: CGPoint(x: body.maxX, y: body.maxY - r))
+        path.addArc(withCenter: CGPoint(x: body.maxX - r, y: body.maxY - r),
+                    radius: r, startAngle: 0, endAngle: .pi / 2, clockwise: true)
+        // Bottom edge → bottom-left corner
+        path.addLine(to: CGPoint(x: body.minX + r, y: body.maxY))
+        path.addArc(withCenter: CGPoint(x: body.minX + r, y: body.maxY - r),
+                    radius: r, startAngle: .pi / 2, endAngle: .pi, clockwise: true)
+        // Left edge → top-left corner
+        path.addLine(to: CGPoint(x: body.minX, y: body.minY + r))
+        path.addArc(withCenter: CGPoint(x: body.minX + r, y: body.minY + r),
+                    radius: r, startAngle: .pi, endAngle: -.pi / 2, clockwise: true)
+        path.close()
+
+        ctx.saveGState()
+        bubbleFill.setFill()
+        path.fill()
+        bubbleBorder.setStroke()
+        path.lineWidth = 1
+        path.stroke()
+        ctx.restoreGState()
+    }
 }
 
 private final class BadgeView: UIView {
@@ -1086,7 +1466,7 @@ private final class PlayerBadgeView: UIView {
     private let avatarContainer = UIView()
     private let avatar = UIView()
     private let crown = UIImageView()
-    private let makerFlag = UIImageView()
+    private let makerFlag = UILabel()
     private let initials = UILabel()
     private let nameLabel = UILabel()
     private let scoreLabel = UILabel()
@@ -1095,7 +1475,8 @@ private final class PlayerBadgeView: UIView {
     private var teamColor: UIColor = UIColor(white: 0.92, alpha: 1)
     private var isDealer: Bool = false
     private var isMaker: Bool = false
-    private var makerTint: UIColor?
+    private var trumpSymbol: String?
+    private var trumpColor: UIColor?
     private var isTurn: Bool = false
     private var isWinning: Bool = false
     private var crownCenterX: NSLayoutConstraint?
@@ -1155,9 +1536,9 @@ private final class PlayerBadgeView: UIView {
         ])
 
         makerFlag.translatesAutoresizingMaskIntoConstraints = false
-        makerFlag.image = UIImage(systemName: "flag.fill")
-        makerFlag.tintColor = UIColor(white: 0.92, alpha: 1)
-        makerFlag.contentMode = .scaleAspectFit
+        makerFlag.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+        makerFlag.textAlignment = .center
+        makerFlag.adjustsFontSizeToFitWidth = true
         makerFlag.isHidden = true
         avatarContainer.addSubview(makerFlag)
         flagCenterX = makerFlag.centerXAnchor.constraint(equalTo: avatar.centerXAnchor)
@@ -1246,9 +1627,10 @@ private final class PlayerBadgeView: UIView {
         updateHeaderIconsLayout()
     }
 
-    func setMaker(_ isMaker: Bool, tint: UIColor?) {
+    func setMaker(_ isMaker: Bool, trumpSymbol: String?, trumpColor: UIColor?) {
         self.isMaker = isMaker
-        self.makerTint = tint
+        self.trumpSymbol = trumpSymbol
+        self.trumpColor = trumpColor
         updateHeaderIconsLayout()
     }
 
@@ -1293,8 +1675,8 @@ private final class PlayerBadgeView: UIView {
     private func updateHeaderIconsLayout() {
         crown.isHidden = !isDealer
         makerFlag.isHidden = !isMaker
-        _ = makerTint
-        makerFlag.tintColor = UIColor(white: 0.92, alpha: 1)
+        makerFlag.text = trumpSymbol
+        makerFlag.textColor = trumpColor ?? UIColor(white: 0.92, alpha: 1)
 
         let showBoth = isDealer && isMaker
         crownCenterX?.isActive = !showBoth
@@ -1857,6 +2239,14 @@ private final class EuchreGame {
     }
 
     func availableHumanButtons() -> [HumanButton] {
+        // handOver is not gated by currentTurnPlayer — there's no active turn.
+        if case .handOver = phase {
+            if winningTeam != nil {
+                return [HumanButton(title: "New Game", kind: .newGame)]
+            }
+            return [HumanButton(title: "Next Hand", kind: .newHand)]
+        }
+
         guard currentTurnPlayer == 0 else { return [] }
 
         switch phase {
@@ -1875,11 +2265,6 @@ private final class EuchreGame {
             return buttons
         case .dealerDiscard:
             return [HumanButton(title: "Auto Discard", kind: .autoDiscard)]
-        case .handOver:
-            if winningTeam != nil {
-                return [HumanButton(title: "New Game", kind: .newGame)]
-            }
-            return [HumanButton(title: "Next Hand", kind: .newHand)]
         default:
             return []
         }
@@ -1928,7 +2313,19 @@ private final class EuchreGame {
         guard let turn = currentTurnPlayer, turn != 0 else { return }
         didScheduleAI = true
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) { [weak self] in
+        // Bidding gets a longer beat so the player can read what each bot decides.
+        // The first trick of a hand gets an extra pause so the trump announcement can land.
+        let delay: Double
+        switch phase {
+        case .makingTrumpRound1, .makingTrumpRound2:
+            delay = 0.85
+        case .playing(_, let trickIndex) where trickIndex == 0:
+            delay = 1.5
+        default:
+            delay = 0.55
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self else { return }
             self.didScheduleAI = false
             self.performAIMove(for: turn)
@@ -2096,7 +2493,6 @@ private final class EuchreGame {
                 self.scoreHand()
                 self.phase = .handOver
                 self.notify()
-                self.scheduleNextHandIfNeeded()
                 return
             }
 
@@ -2131,22 +2527,6 @@ private final class EuchreGame {
 
         if scores[0] >= 10 { winningTeam = 0 }
         if scores[1] >= 10 { winningTeam = 1 }
-    }
-
-    private func scheduleNextHandIfNeeded() {
-        guard winningTeam == nil else { return }
-        guard !didScheduleNextHand else { return }
-        didScheduleNextHand = true
-        let scheduledForSerial = handSerial
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { [weak self] in
-            guard let self else { return }
-            guard self.handSerial == scheduledForSerial else { return }
-            guard self.winningTeam == nil else { return }
-            guard case .handOver = self.phase else { return }
-            self.dealer = (self.dealer + 1) % 4
-            self.startNewHand()
-        }
     }
 
     // MARK: - AI
@@ -2279,6 +2659,27 @@ private final class EuchreGame {
     }
 
     // MARK: - Friendly Suggestion
+
+    /// Returns the suggested trump action (button title + hint text) for player 0.
+    func suggestedTrumpAction() -> (title: String, reason: String)? {
+        switch phase {
+        case .makingTrumpRound1 where currentTurnPlayer == 0:
+            if shouldOrderUp(player: 0) {
+                let suit = upcard?.suit.symbol ?? ""
+                return ("Order Up", "Strong hand for \(suit) trump")
+            } else {
+                return ("Pass", "Hand too weak to order up")
+            }
+        case .makingTrumpRound2 where currentTurnPlayer == 0:
+            if let suit = chooseTrumpInRound2(player: 0) {
+                return (suit.symbol, "\(suit.symbol) looks like your best suit")
+            } else {
+                return ("Pass", "No strong suit — consider passing")
+            }
+        default:
+            return nil
+        }
+    }
 
     func suggestedPlayForHuman() -> (card: Card, reason: String)? {
         guard case .playing(let turn, _) = phase, turn == 0 else { return nil }
