@@ -454,7 +454,9 @@ final class GameViewController: UIViewController {
             badge.setScore(game.scores[game.team(of: index)])
             badge.setTricks(game.tricksWonByTeam[team], visible: game.shouldShowTrickTally)
             badge.setTeam(team)
-            badge.setMaker(index == game.makerPlayerToDisplay, tint: game.trump.map(suitTint))
+            badge.setMaker(index == game.makerPlayerToDisplay,
+                           trumpSymbol: game.trump?.symbol,
+                           trumpColor: game.trump.map(suitTint))
             badge.setDealer(index == game.dealer)
             badge.setActive(game.isPlayerActive(index))
             badge.setTurn(index == game.currentTurnPlayer)
@@ -1430,7 +1432,7 @@ private final class PlayerBadgeView: UIView {
     private let avatarContainer = UIView()
     private let avatar = UIView()
     private let crown = UIImageView()
-    private let makerFlag = UIImageView()
+    private let makerFlag = UILabel()
     private let initials = UILabel()
     private let nameLabel = UILabel()
     private let scoreLabel = UILabel()
@@ -1439,7 +1441,8 @@ private final class PlayerBadgeView: UIView {
     private var teamColor: UIColor = UIColor(white: 0.92, alpha: 1)
     private var isDealer: Bool = false
     private var isMaker: Bool = false
-    private var makerTint: UIColor?
+    private var trumpSymbol: String?
+    private var trumpColor: UIColor?
     private var isTurn: Bool = false
     private var isWinning: Bool = false
     private var crownCenterX: NSLayoutConstraint?
@@ -1499,9 +1502,9 @@ private final class PlayerBadgeView: UIView {
         ])
 
         makerFlag.translatesAutoresizingMaskIntoConstraints = false
-        makerFlag.image = UIImage(systemName: "flag.fill")
-        makerFlag.tintColor = UIColor(white: 0.92, alpha: 1)
-        makerFlag.contentMode = .scaleAspectFit
+        makerFlag.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+        makerFlag.textAlignment = .center
+        makerFlag.adjustsFontSizeToFitWidth = true
         makerFlag.isHidden = true
         avatarContainer.addSubview(makerFlag)
         flagCenterX = makerFlag.centerXAnchor.constraint(equalTo: avatar.centerXAnchor)
@@ -1590,9 +1593,10 @@ private final class PlayerBadgeView: UIView {
         updateHeaderIconsLayout()
     }
 
-    func setMaker(_ isMaker: Bool, tint: UIColor?) {
+    func setMaker(_ isMaker: Bool, trumpSymbol: String?, trumpColor: UIColor?) {
         self.isMaker = isMaker
-        self.makerTint = tint
+        self.trumpSymbol = trumpSymbol
+        self.trumpColor = trumpColor
         updateHeaderIconsLayout()
     }
 
@@ -1637,8 +1641,8 @@ private final class PlayerBadgeView: UIView {
     private func updateHeaderIconsLayout() {
         crown.isHidden = !isDealer
         makerFlag.isHidden = !isMaker
-        _ = makerTint
-        makerFlag.tintColor = UIColor(white: 0.92, alpha: 1)
+        makerFlag.text = trumpSymbol
+        makerFlag.textColor = trumpColor ?? UIColor(white: 0.92, alpha: 1)
 
         let showBoth = isDealer && isMaker
         crownCenterX?.isActive = !showBoth
