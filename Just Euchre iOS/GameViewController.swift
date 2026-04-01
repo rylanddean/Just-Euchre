@@ -58,6 +58,7 @@ final class GameViewController: UIViewController {
     private var lastDialogWinningTeam: Int? = nil
 
     private var suggestionTimer: Timer?
+    private var suggestionGeneration = 0
     private weak var hintedCardView: CardView?
     private var hintedActionTitle: String?
     private let hintPillView = UIView()
@@ -1275,6 +1276,7 @@ final class GameViewController: UIViewController {
     private func cancelSuggestion() {
         suggestionTimer?.invalidate()
         suggestionTimer = nil
+        suggestionGeneration += 1
         if let cv = hintedCardView {
             UIView.animate(withDuration: 0.2) { cv.isHinted = false }
             hintedCardView = nil
@@ -1303,6 +1305,10 @@ final class GameViewController: UIViewController {
     private func showCardSuggestion() {
         guard let suggestion = game.suggestedPlayForHuman() else { return }
 
+        // Safety: only hint a card that is actually selectable right now.
+        let selectable = Set(game.selectableCardsForHuman())
+        guard selectable.contains(suggestion.card) else { return }
+
         // Find the CardView matching the suggested card.
         let hand = game.players[0].hand.sorted(by: { game.sortKey(for: $0) < game.sortKey(for: $1) })
         guard let idx = hand.firstIndex(of: suggestion.card), idx < handCardViews.count else { return }
@@ -1318,8 +1324,13 @@ final class GameViewController: UIViewController {
         wiggle.timingFunction = CAMediaTimingFunction(name: .easeOut)
         cardView.layer.add(wiggle, forKey: "suggestion_wiggle")
 
+        // Capture the generation at fire time so the post-wiggle hint doesn't
+        // apply if cancelSuggestion() was called during the animation window.
+        suggestionGeneration += 1
+        let gen = suggestionGeneration
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) { [weak self, weak cardView] in
             guard let self, let cardView else { return }
+            guard self.suggestionGeneration == gen else { return }
             UIView.animate(withDuration: 0.25) { cardView.isHinted = true }
             self.hintedCardView = cardView
         }
